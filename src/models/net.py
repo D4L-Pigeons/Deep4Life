@@ -4,8 +4,8 @@ import torch.nn.functional as F
 from torch.nn import Parameter
 from torch_geometric.nn import SAGEConv
 
-class NormedLinear(nn.Module):
 
+class NormedLinear(nn.Module):
     def __init__(self, in_features, out_features):
         super(NormedLinear, self).__init__()
         self.weight = Parameter(torch.Tensor(in_features, out_features))
@@ -14,6 +14,7 @@ class NormedLinear(nn.Module):
     def forward(self, x):
         out = F.normalize(x, dim=1).mm(F.normalize(self.weight, dim=0))
         return 10 * out
+
 
 class Encoder(nn.Module):
     def __init__(self, x_dim, num_cls):
@@ -30,11 +31,12 @@ class Encoder(nn.Module):
         x = self.conv1(x)
         feat = x
         x = self.relu(x)
-        x = self.conv2(x,edge_index)
+        x = self.conv2(x, edge_index)
         out_feat = x
         out = self.linear(x)
         return out, feat, out_feat
-    
+
+
 class FCNet(nn.Module):
     def __init__(self, x_dim, num_cls):
         super(FCNet, self).__init__()
