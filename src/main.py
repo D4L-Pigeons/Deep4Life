@@ -34,6 +34,7 @@ def run_stellar(args, dataset):
 def main():
     parser = argparse.ArgumentParser(description="STELLAR")
     parser.add_argument("--dataset", default="d4ls", help="dataset setting")
+    parser.add_argument("--dataset-path", default="data/train", help="dataset path")
     parser.add_argument(
         "--method",
         default="stellar",
@@ -61,7 +62,7 @@ def main():
     args = prepare_save_dir(args, __file__)
 
     if args.dataset == "d4ls":
-        data = load_d4ls_data()
+        data = load_d4ls_data(args.dataset_path)
         (
             labeled_X,
             labeled_y,
