@@ -8,12 +8,13 @@ from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 from torch import Tensor
 from anndata import AnnData
-from typing import Optional
+from typing import Optional, Tuple, Generator
 import numpy as np
 import copy
 import scanpy as sc
 from tqdm import tqdm
-from src.utils import calculate_entropy, calculate_batch_accuracy
+from src.utils import calculate_entropy, calculate_batch_accuracy, MarginLoss
+from itertools import cycle
 
 
 class VanillaStellarNormedLinear(nn.Module):
@@ -87,7 +88,7 @@ class VanillaStellarModel(nn.Module):
     def forward(self, data: Data):
         _, out_feat = self.encoder(data)
         out = self.fc_net(out_feat)
-        return out
+        return out, out_feat
 
 
 class VanillaStellar:
@@ -102,7 +103,7 @@ class VanillaStellar:
         self.seed_model = VanillaStellarFCNet(cfg.input_dim, cfg.num_classes).to(self.device)
         self.seed_optimizer = optim.Adam(self.seed_model.parameters(), lr=cfg.seed_lr)
 
-    def train_supervised(
+    def train_seed_model(
             self,
             train_loader: DataLoader,
             epochs: int,
@@ -111,6 +112,7 @@ class VanillaStellar:
         r"""
         Trains the model in a supervised manner.
         """
+        cross_entropy_loss_fn = nn.CrossEntropyLoss()
         train_loss_sum = 0.0
         train_acc_sum = 0.0
         self.seed_model.train()
@@ -119,7 +121,7 @@ class VanillaStellar:
             for batch in train_progress_bar:
                 batch = batch.to(self.device)
                 output = self.seed_model(batch)
-                loss = F.cross_entropy(output, batch.y)
+                loss = cross_entropy_loss_fn(output, batch.y)
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
@@ -141,29 +143,89 @@ class VanillaStellar:
                     val_acc_sum += calculate_batch_accuracy(output, batch.y)
                     val_progress_bar.set_postfix({"Loss": val_loss_sum / len(val_progress_bar), "Accuracy": val_acc_sum / len(val_progress_bar)})
 
+    def train_main_model(
+            self,
+            labeled_loader: DataLoader,
+            extended_unlabeled_loader: DataLoader,
+            epochs: int
+            ) -> None:
+        r"""
+        Trains the model using the Stellar algorithm.
+        """
+        binary_cross_entropy_loss_fn = nn.BCEWithLogitsLoss()
+        
+        for epoch in range(epochs):
+            self.model.train()
+            # As this is vanilla Stellar I follow the original implementation with strange way of iterating over the unlabeled data. The assumptions is that the unlabeled dataloader has fewer batches.
+            # cycle is not doing the shuffling
+            train_progress_bar = tqdm(zip(labeled_loader, cycle(extended_unlabeled_loader)), desc=f"Training - epoch {epoch}", leave=True)
+            for lab_graph_batch, ulab_batch in train_progress_bar:
+                ulab_graph_batch, ulab_novel_label_seed_idx = ulab_batch
+                lab_graph_batch.x, ulab_graph_batch.x = lab_graph_batch.x.to(self.device), ulab_graph_batch.x.to(self.device)
+                self.optimizer.zero_grad()
+                lab_output, lab_feat = self.model(lab_graph_batch)
+                ulab_output, ulab_feat = self.model(ulab_graph_batch)
+                lab_len = len(lab_graph_batch)
+                ulab_len = len(ulab_graph_batch)
+                batch_size = lab_len + ulab_len
+                output = torch.cat([lab_output, ulab_output], dim=0)
+                feat = torch.cat([lab_feat, ulab_feat], dim=0)
+
+                prob = F.softmax(output, dim=1)
+
+                cos_dist = F.cosine_similarity(feat, feat, dim=2)
+                ulab_cos_dist = cos_dist[lab_len:, :]
+                vals, pos_idx = torch.topk(ulab_cos_dist, k=2, dim=1)
+
+                target = lab_graph_batch.y
+
+                # for i in range(lab_len):
+
+
+        
+        # margin_loss_fn = MarginLoss(m=-)
+    
     @staticmethod
-    def find_clusters(data: Data) -> Tensor:
+    def find_clusters(data: Data) -> Tuple[Tensor, np.ndarray]:
         r"""
         Finds the clusters using the Louvain algorithm.
         """
         adata = AnnData(X=data.x.cpu().numpy())
         sc.pp.neighbors(adata)
         sc.tl.louvain(adata)
-        clusters = torch.tensor(adata.obs["louvain"].values, dtype=torch.long)
-        return clusters
+        clusters = torch.tensor(adata.obs["louvain"].cat.codes.values)
+        max_cluster_label = clusters.max().item()
+        return clusters, max_cluster_label
     
-    def estimate_seeds(self, unlabeled_loader: DataLoader) -> None:
+    def estimate_seeds(
+            self,
+            unlabeled_loader: DataLoader,
+            num_seed_class: int
+            ) -> Generator[Tuple[Data, Tensor], None, None]:
         r"""
         Estimates the seeds using a fully connected network.
         """
+        largest_standard_class_label = self.cfg.num_classes - 1
         self.seed_model.eval()
         for batch in unlabeled_loader:
             batch = batch.to(self.device)
             with torch.no_grad():
                 output = self.seed_model(batch)
             entr = calculate_entropy(output)
-            clusters = self.find_clusters(batch)
-
+            
+            clusters, max_cluster_label = self.find_clusters(batch)
+            clusters_entropy = np.zeros(max_cluster_label)
+            for cluster_label in range(max_cluster_label + 1):
+                cluster_indices = (clusters == cluster_label)
+                clusters_entropy[cluster_label] = entr[cluster_indices].mean()
+            
+            novel_cluster_idxs = np.argsort(clusters_entropy)[-num_seed_class:]
+            novel_label_seeds = torch.zeros_like(clusters)
+            for i, novel_cluster_idx in enumerate(novel_cluster_idxs):
+                novel_label_seeds[clusters == novel_cluster_idx] = largest_standard_class_label + i + 1
+            
+            yield batch, novel_label_seeds
+           
     def predict(self, data: Data) -> Tensor:
         self.model.eval()
         with torch.no_grad():
@@ -174,9 +236,16 @@ class VanillaStellar:
         mean_uncertainty = 1 - confs.mean().item()
         return mean_uncertainty, preds
     
-    def train_stellar(self, labeled_loader: DataLoader, unlabeled_loader: DataLoader, epochs: int, seed_epochs: int) -> None:
+    def train_stellar(
+            self,
+            labeled_loader: DataLoader,
+            unlabeled_loader: DataLoader,
+            epochs: int,
+            seed_epochs: int
+            ) -> None:
         r"""
         Trains the model using the Stellar algorithm.
         """
-        self.train_supervised(labeled_loader, seed_epochs)
+        self.train_seed_model(labeled_loader, seed_epochs)
+        novel_label_seeds_unlabeled_loader = self.estimate_seeds(unlabeled_loader, self.cfg.num_seed_class)
         
