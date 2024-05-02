@@ -1,36 +1,21 @@
 import torch
 import torch.nn as nn
-import os
-import os.path
 import torch.nn.functional as F
+from torch import Tensor
 
 
-def prepare_save_dir(args, filename):
-    """Create saving directory."""
-    runner_name = os.path.basename(filename).split(".")[0]
-    model_dir = "./experiments/{}/{}/".format(runner_name, args.name)
-    args.savedir = model_dir
-    if not os.path.exists(args.savedir):
-        os.makedirs(args.savedir)
-    return args
-
-
-def entropy(x):
+def calculate_entropy(logits: Tensor) -> Tensor:
+    r"""
+    Calculate the entropy of the logits.
     """
-    Helper function to compute the entropy over the batch
-    input: batch w/ shape [b, num_classes]
-    output: entropy value [is ideally -log(num_classes)]
-    """
-    EPS = 1e-8
-    x_ = torch.clamp(x, min=EPS)
-    b = x_ * torch.log(x_)
+    return (F.softmax(logits, dim=1) * F.log_softmax(logits, dim=1)).sum(dim=1)
 
-    if len(b.size()) == 2:  # Sample-wise entropy
-        return -b.sum(dim=1).mean()
-    elif len(b.size()) == 1:  # Distribution-wise entropy
-        return -b.sum()
-    else:
-        raise ValueError("Input tensor is %d-Dimensional" % (len(b.size())))
+
+def calculate_batch_accuracy(output: Tensor, target: Tensor) -> float:
+    r"""
+    Calculate the accuracy of the batch.
+    """
+    return (output.argmax(dim=1) == target).float().mean().item()
 
 
 class MarginLoss(nn.Module):
