@@ -33,7 +33,10 @@ def get_all_distances():
     return all_distances  
 
 
-def _get_edges(pos: np.ndarray, distance_threshold: float) -> np.ndarray:
+def _get_edges(
+        pos: np.ndarray,
+        distance_threshold: float
+        ) -> np.ndarray:
     r"""
     Get the edges between the cells based on the distance threshold
     """
@@ -64,7 +67,7 @@ def make_graph_list(
     # GROUPING BY INDICATION MAY BE A GOOD IDEA FOR TESTING TRANSFER LEARNING
     for sample_id in anndata.obs["sample_id"].unique():
         sample_cell_indices = (anndata.obs["sample_id"] == sample_id).values
-        sample_cell_ids = anndata.obs[sample_cell_indices].index
+        sample_cell_ids = np.array(anndata.obs[sample_cell_indices].index)
         
         sample_pos = anndata.obs[sample_cell_indices][["Pos_X", "Pos_Y"]].values.astype(np.float32)
         sample_edges = _get_edges(sample_pos, distance_threshold)
@@ -91,9 +94,10 @@ class StellarDataloader(DataLoader):
     r"""
     DataLoader for the StellarGraph dataset
     """
-    def __init__(self, filename: str, test: bool, batch_size: int, shuffle: bool = True):
+    def __init__(self, filename: str, test: bool, batch_size: int, shuffle: bool = True, graphs_idx: List[int] = []):
         data_path = load_d4ls.TEST_DATA_PATH if test else load_d4ls.TRAIN_DATA_PATH
         file_path = data_path / filename
         assert file_path.exists(), f"File {filename} does not exist in {data_path}"
         graphs = torch.load(file_path)
+        graphs = [graph for idx, graph in enumerate(graphs) if idx in graphs_idx]
         super().__init__(graphs, batch_size=batch_size, shuffle=shuffle)
