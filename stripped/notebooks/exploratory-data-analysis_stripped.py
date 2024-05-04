@@ -5,8 +5,12 @@
 
 # ### Imports
 
-# In[1]:
+# In[4]:
 
+
+import os
+if os.getcwd().endswith('notebooks'):
+    os.chdir(os.path.dirname(os.getcwd()))
 
 import pandas as pd
 from pandas import DataFrame
@@ -21,7 +25,7 @@ from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
 from typing import List, Tuple, Optional
 
-from datasets import load_d4ls
+from src.datasets import load_d4ls
 
 pd.set_option('display.max_columns', None)
 
