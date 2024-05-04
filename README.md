@@ -110,4 +110,9 @@ If you find our code and research useful, please consider citing:
   publisher={Nature Publishing Group}
 }
 ```
+
+### Development
+
+Run ```git config --local core.hooksPath .githooks/``` to set up git hooks for the project.
+
 # Deep4Life
