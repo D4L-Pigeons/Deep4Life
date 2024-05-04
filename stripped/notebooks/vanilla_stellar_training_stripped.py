@@ -87,9 +87,3 @@ for k in range(n_folds):
 
 print(f"Mean validation accuracy: {valid_accs.mean()} +/- {valid_accs.std()}")
 
-
-# In[ ]:
-
-
-
-
