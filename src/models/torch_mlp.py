@@ -1,21 +1,14 @@
-import argparse
-from utils import prepare_save_dir
-from models.STELLAR import STELLAR
-import numpy as np
-import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import pandas as pd
-from datasets.datasets import GraphDataset, load_tonsilbe_data, load_hubmap_data
-from datasets.load_d4ls import load_full_anndata
-from sklearn.metrics import pairwise_distances
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import GridSearchCV, train_test_split
-from sklearn.metrics import accuracy_score, classification_report
-from sklearn.neural_network import MLPClassifier
+from sklearn.model_selection import  train_test_split
 from torch.utils.data import DataLoader
 import time
+import anndata
+import numpy as np
+
+from models.ModelBase import ModelBase
 
 pd.set_option('display.max_columns', None)
 
@@ -32,16 +25,34 @@ class MLP(nn.Module):
     def forward(self, input):
        return self.layers(input)
 
-class TorchMLP:
-    def __init__(self, args):
+class TorchMLP(ModelBase):
+    def __init__(self, config):
         self.mlp = MLP()
 
-    def pred(self, X):
+    def train(self, data: anndata.AnnData) -> None:
+        X_train = data.layers['exprs']
+        y_train = data.obs['cell_labels'].cat.codes.to_numpy()
+        
+        self._train(X_train, y_train, log=True, early_stopping=True)
+    
+    def predict(self, data: anndata.AnnData) -> np.ndarray:
+        X = data.layers['exprs']
         X = torch.tensor(X).float()
-        output = self.mlp(X)
-        return torch.argmax(output, dim=1)
+        self.mlp.eval()
+        with torch.no_grad():
+            logits = self.mlp(X)
+        preds = torch.argmax(logits, dim=1).detach().numpy()
+        pred_labels = data.obs["cell_labels"].cat.categories[preds].to_numpy()
+        
+        return pred_labels
 
-    def train(self, X_train, y_train, log=False, early_stopping=False):
+    def save(self, file_path: str) -> None:
+        raise NotImplementedError()
+
+    def load(self, file_path: str) -> None:
+        raise NotImplementedError()
+    
+    def _train(self, X_train, y_train, log=False, early_stopping=False):
         # train config. Probably it should be moved to args
         BATCH_SIZE = 200
         LR = 0.001
@@ -107,7 +118,7 @@ class TorchMLP:
             avg_train_loss = accumulated_loss / len(train_data_loader)
             self.train_losses.append(avg_train_loss)
 
-            self._update_no_improvement_count(early_stopping, X_val, y_val)
+            self._update_no_improvement_count(early_stopping, X_val, y_val, log)
 
             if self._no_improvement_count > N_INTER_NO_CHANGE:
                 break	
@@ -119,9 +130,10 @@ class TorchMLP:
     def _update_no_improvement_count(self, early_stopping, X_val, y_val, log):
         if early_stopping:
             self.validation_accuracies.append(self._compute_accuracy(X_val, y_val))
+            self.mlp.train()
 
             if log:
-                print("Validation score: %f" % self.validation_accuracies[-1])
+                print(" Validation score: %f" % self.validation_accuracies[-1])
 
             last_valid_score = self.validation_accuracies[-1]
 
@@ -142,10 +154,10 @@ class TorchMLP:
                 self.best_loss = self.train_losses[-1]
     
     def _compute_accuracy(self, X_val, y_val):
-        self.model.eval()  # Set the model to evaluation mode
+        self.mlp.eval()  # Set the model to evaluation mode
 
         with torch.no_grad():  # No need to compute gradients during validation
-            pred = self.model(X_val)
+            pred = self.mlp(X_val)
             correct = (torch.argmax(pred, dim=1) == y_val).float().sum()
             accuracy = correct / len(y_val)
 
