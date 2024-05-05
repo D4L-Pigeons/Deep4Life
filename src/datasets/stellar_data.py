@@ -64,7 +64,6 @@ def make_graph_list(
     le = LabelEncoder()
     targets = le.fit_transform(anndata.obs["cell_labels"].values)
     graphs = []
-    # GROUPING BY INDICATION MAY BE A GOOD IDEA FOR TESTING TRANSFER LEARNING
     for sample_id in anndata.obs["sample_id"].unique():
         sample_cell_indices = (anndata.obs["sample_id"] == sample_id).values
         sample_cell_ids = np.array(anndata.obs[sample_cell_indices].index).reshape(-1)
