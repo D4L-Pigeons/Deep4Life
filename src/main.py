@@ -14,21 +14,21 @@ def run_linear(args, dataset):
     linear_model = LinearModel(args, dataset)
     linear_model.train()
     _, results = linear_model.pred()
-    np.save(os.path.join(args.savedir, args.dataset + "_results.npy"), results)
+    np.save(os.path.join(args.savedir, args.method + "_results.npy"), results)
 
 
 def run_xgboost(args, dataset):
     linear_model = XGBoostModel(args, dataset)
     linear_model.train()
     _, results = linear_model.pred()
-    np.save(os.path.join(args.savedir, args.dataset + "_results.npy"), results)
+    np.save(os.path.join(args.savedir, args.method + "_results.npy"), results)
 
 
 def run_stellar(args, dataset):
     stellar = STELLAR(args, dataset)
     stellar.train()
     _, results = stellar.pred()
-    np.save(os.path.join(args.savedir, args.dataset + "_results.npy"), results)
+    np.save(os.path.join(args.savedir, args.method + "_results.npy"), results)
 
 
 def main():
@@ -39,9 +39,6 @@ def main():
         "--method",
         default="stellar",
         help="method chosen (stellar, linear, xgboost, ...)",
-    )
-    parser.add_argument(
-        "--seed", type=int, default=1, metavar="S", help="random seed (default: 1)"
     )
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--lr", type=float, default=1e-3)
@@ -59,6 +56,7 @@ def main():
 
     # Seed the run and create saving directory
     args.method = "_".join([args.dataset, args.method])
+    np.save(os.path.join(args.savedir, args.method + "_args.npy"), args)
     args = prepare_save_dir(args, __file__)
 
     if args.dataset == "d4ls":
