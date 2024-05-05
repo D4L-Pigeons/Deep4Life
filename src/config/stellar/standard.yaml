@@ -1,0 +1,8 @@
+batch_size: 1
+device: cpu
+input_dim: 40
+hid_dim: 160
+num_classes: 14
+lr: 0.001
+distance_threshold: 14
+epochs: 20
