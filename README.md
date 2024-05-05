@@ -9,19 +9,19 @@ For each notebook run ```git config --local core.hooksPath .githooks/``` to set 
 
 ## EDA
 
-EDA is in file ```exploratory-data-analysis.ipynb```.
+EDA is in file ```notebooks/exploratory-data-analysis.ipynb```.
 
 ## Baselines
 
 We have 3 (4) baselines in total: 
 
-SVM
+### SVM
 
-XGBoost
+### XGBoost
 
-MLP
+### MLP
 
-CellSighter
+### CellSighter
 
 ## Stellar
 
