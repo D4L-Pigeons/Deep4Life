@@ -95,7 +95,7 @@ def make_graph_list(
     file_path = data_path / save_filename
     assert file_path.exists() == False, f"File {save_filename} already exists"
     
-    anndata = data_utils.load_full_anndata()
+    anndata = data_utils.load_full_anndata(test=test)
     le = LabelEncoder()
     targets = le.fit_transform(anndata.obs["cell_labels"].values)
     graphs = []
