@@ -5,7 +5,7 @@
 
 # ### Imports
 
-# In[4]:
+# In[1]:
 
 
 import os
@@ -15,6 +15,7 @@ if os.getcwd().endswith('notebooks'):
 import pandas as pd
 from pandas import DataFrame
 import numpy as np
+from numpy import ndarray
 import matplotlib.pyplot as plt
 from matplotlib import colormaps
 from matplotlib.ticker import FormatStrFormatter
@@ -22,7 +23,7 @@ import seaborn as sns
 import scipy.stats as stats
 from sklearn.decomposition import FactorAnalysis, PCA, KernelPCA, FastICA
 from sklearn.linear_model import LogisticRegression, LinearRegression
-from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
+from sklearn.feature_selection import mutual_info_classif, mutual_info_regression, f_classif
 from typing import List, Tuple, Optional
 
 from src.datasets import load_d4ls
@@ -32,7 +33,7 @@ pd.set_option('display.max_columns', None)
 
 # ### EDA utils
 
-# In[109]:
+# In[2]:
 
 
 def make_class_distribution_plot(
@@ -52,6 +53,7 @@ def make_class_distribution_plot(
     if display_desc:
         plt.xlabel(class_var)
         plt.title(title)
+    
     plt.show()
 
 def make_histograms(
@@ -60,19 +62,21 @@ def make_histograms(
         title: str,
         subplots_shape: Optional[Tuple] = None,
         display_desc: bool = False,
-        title_shift: float = 1
+        title_shift: float = 1,
+        bins: int = 100
         ) -> None:
     r"""
     Plot histograms of the given quantitative variables in the dataframe.
     """
 
-    num_plots = len(quant_vars)
     if subplots_shape is not None:
         num_rows, num_cols = subplots_shape
     else:
+        num_plots = len(quant_vars)
         num_rows = (num_plots + 1) // 2
         num_cols = 2
     fig, axes = plt.subplots(num_rows, num_cols, figsize=(5 * num_cols, 2 * num_rows))
+    axes = np.atleast_2d(axes)
     plt.subplots_adjust(wspace=0.3, hspace=0.5)    
     
     if display_desc:
@@ -82,11 +86,10 @@ def make_histograms(
         row = i // num_cols
         col = i % num_cols
         ax = axes[row, col]
-        ax.hist(df[var], density=True, bins=100, color='grey', edgecolor='black')
+        ax.hist(df[var], density=True, bins=bins, color='grey', edgecolor='black')
         ax.set_xlabel(var)
         ax.set_ylabel('PDF estimation', fontsize=7)
         ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))  
-
 
     plt.show()
 
@@ -103,13 +106,14 @@ def make_boxplots(
     Plot boxplots of the given quantitative variables in the dataframe.
     """
 
-    num_plots = len(quant_vars)
     if subplots_shape is not None:
         num_rows, num_cols = subplots_shape
     else:
+        num_plots = len(quant_vars)
         num_rows = (num_plots + 1) // 2
         num_cols = 2
     fig, axes = plt.subplots(num_rows, num_cols, figsize=(5 * num_cols, 2 * num_rows))
+    axes = np.atleast_2d(axes)
     plt.subplots_adjust(wspace=0.3, hspace=0.5)    
     
     if display_desc:
@@ -154,43 +158,35 @@ def make_boxplots_per_celltype(
     plt.show()
 
 
-def make_corr_plot(
-        df: DataFrame,
-        vars: List[str],
-        title: str,
-        method: str = 'spearman'
-        ) -> None:
-    r"""
-    Plot a correlation matrix of the given variables in the dataframe.
-    """
-
-    correlation_matrix = df[vars].corr(method=method)
-    plt.figure(figsize=(10, 8))
-    cmap = sns.diverging_palette(255, 10, as_cmap=True)
-    plt.imshow(correlation_matrix, cmap=cmap, interpolation='nearest', vmin=-1, vmax=1)
-    plt.colorbar()
-    plt.xticks(range(len(vars)), vars, rotation=90)
-    plt.yticks(range(len(vars)), vars)
-    plt.title(title)
-    plt.show()
-
-
 # ### Loading anndata
 
-# In[3]:
+# In[241]:
 
 
 train_anndata = load_d4ls.load_full_anndata()
+cell_labels = np.array(train_anndata.obs['cell_labels'].unique())
 marker_names = train_anndata.var['marker'].values
-df = pd.DataFrame(data=train_anndata.layers['exprs'], columns=marker_names)
+expressions = pd.DataFrame(data=train_anndata.layers['exprs'], columns=marker_names)
 targets_np = train_anndata.obs['cell_labels'].values.to_numpy()
-df['cell_labels'] = targets_np
+expressions['cell_labels'] = targets_np
+
+
+# In[242]:
+
+
+cell_labels
+
+
+# In[178]:
+
+
+marker_names
 
 
 # ### Tabular data exploration
 
 # #### Checking columns, data types and missing data in the `train_anndata.obs`, wchich stores cell features other than marker expressions
-# 
+
 # Train `anndata` `obs` dataframe stores the information about cells. Each row in this table represent an information about a single cell. It has the following columns that are interesting for your analysis:
 # - `image` - name of the image file from which a cell was obtained,
 # - `sample_id` - name of the patient sample from which a given image was obtained,
@@ -212,7 +208,7 @@ display(train_anndata.obs.columns)
 display(train_anndata.obs.dtypes)
 
 
-# In[7]:
+# In[6]:
 
 
 display(train_anndata.obs.isna().sum())
@@ -220,28 +216,29 @@ display(train_anndata.obs.isna().sum())
 
 # #### Viewing the `train_anndata.obs` dataset
 
-# In[6]:
+# In[7]:
 
 
 display(train_anndata.obs.head())
 
 
 # #### Checking columns, data types and missing data in the `train_anndata.var`, which stores the information about the marker names.
+
 # `use_channel` indicates wheather a channel is used in practice.
 
-# In[44]:
+# In[8]:
 
 
 display(train_anndata.var.columns)
 
 
-# In[45]:
+# In[9]:
 
 
 display(train_anndata.var.dtypes)
 
 
-# In[46]:
+# In[10]:
 
 
 display(train_anndata.var.isna().sum())
@@ -249,37 +246,37 @@ display(train_anndata.var.isna().sum())
 
 # #### Viewing the `train_anndata.var` dataset
 
-# In[47]:
+# In[11]:
 
 
 display(train_anndata.var.head())
 
 
 # #### Checking keys, data types in the `train_anndata.layers`, which stores the information about the marker expressions.
-# 
+
 # `train_anndata.layers['exprs']` with shape `(train_anndata.obs.shape[0], train_anndata.var.shape[0])` stores the matrix with marker expressions for each cell
 
-# In[48]:
+# In[12]:
 
 
 display(train_anndata.layers)
 
 
-# In[49]:
+# In[13]:
 
 
 layer_types = [type(layer) for layer in train_anndata.layers.values()]
 display(layer_types)
 
 
-# In[50]:
+# In[14]:
 
 
 display(train_anndata.layers['counts'].shape)
 display(train_anndata.layers['counts'].dtype)
 
 
-# In[51]:
+# In[15]:
 
 
 display(train_anndata.layers['exprs'].shape)
@@ -288,7 +285,7 @@ display(train_anndata.layers['exprs'].dtype)
 
 # #### Viewing the `train_anndata.layers['counts']` and `train_anndata.layers['exprs']`
 
-# In[52]:
+# In[16]:
 
 
 display(train_anndata.layers['counts'][0, :])
@@ -297,7 +294,7 @@ display(train_anndata.layers['exprs'][0, :])
 
 # #### Checking values
 
-# In[10]:
+# In[17]:
 
 
 train_anndata.obs.columns
@@ -307,9 +304,50 @@ train_anndata.obs.columns
 
 # ## 1. General data overview
 
+# ### A peek into `obs` data
+
+# In[18]:
+
+
+train_anndata.obs
+
+
+# ### General sample/image level comparison
+
+# In[19]:
+
+
+train_anndata.obs[['sample_id', 'image']].groupby('sample_id', observed=True).count().describe()
+
+
+# In[20]:
+
+
+make_histograms(
+    df=train_anndata.obs[['sample_id', 'image']].groupby('sample_id', observed=True).count().rename(columns={'image': 'Cells per sample'}),
+    quant_vars=['Cells per sample'],
+    title='Number of images per indication',
+    subplots_shape=(1, 1),
+    bins=10,
+    display_desc=True,
+    title_shift=1.1)
+
+
+# #### Interpretation
+# As may be seen the number of cells per sample differs.
+
+# In[21]:
+
+
+train_anndata.obs[['Indication', 'image']].groupby('Indication', observed=True).count()
+
+
+# #### Iterpretation
+# As visible the distribution of cells per indication is not uniform, but the imbalance is not large.
+
 # ### Cell type
 
-# In[78]:
+# In[22]:
 
 
 train_anndata.obs.cell_labels.unique().tolist()
@@ -344,13 +382,13 @@ train_anndata.obs.cell_labels.unique().tolist()
 # 
 # 14. **BnT**: This term is not standard in cell biology, so it's difficult to provide a specific introduction without further context. It might refer to a hybrid cell type combining characteristics of B and T cells, but clarification would be needed to provide a detailed description.
 
-# In[53]:
+# In[23]:
 
 
 train_anndata.obs.cell_labels.value_counts()
 
 
-# In[70]:
+# In[24]:
 
 
 make_class_distribution_plot(train_anndata.obs, 'cell_labels', 'Figure 1.1 Class Distribution', display_desc=True)
@@ -361,20 +399,20 @@ make_class_distribution_plot(train_anndata.obs, 'cell_labels', 'Figure 1.1 Class
 
 # ### Independent obs variables distributions
 
-# In[72]:
+# In[25]:
 
 
 obs_quant_vars = ['area', 'major_axis_length', 'minor_axis_length', 'eccentricity', 'width_px', 'height_px']
 train_anndata.obs[obs_quant_vars].describe()
 
 
-# In[108]:
+# In[26]:
 
 
 make_histograms(train_anndata.obs, obs_quant_vars, 'Figure 1.2 Histograms of Quantitative Variables in the obs Training Data', display_desc=True, title_shift=0.95)
 
 
-# In[110]:
+# In[27]:
 
 
 make_boxplots(train_anndata.obs, obs_quant_vars, 'Figure 1.3 Boxplots of Quantitative Variables in the obs Training Data', display_desc=True, title_shift=0.95)
@@ -385,40 +423,40 @@ make_boxplots(train_anndata.obs, obs_quant_vars, 'Figure 1.3 Boxplots of Quantit
 
 # ### Independent obs variables distributions per cell type
 
-# In[79]:
+# In[28]:
 
 
-make_boxplots_per_celltype(train_anndata.obs, 'celltypes', 'area', 'Figure 1.4 Boxplots of Area by Cell Type in the obs Training Data', display_desc=True)
+make_boxplots_per_celltype(train_anndata.obs, 'cell_labels', 'area', 'Figure 1.4 Boxplots of Area by Cell Type in the obs Training Data', display_desc=True)
 
 
-# In[81]:
+# In[29]:
 
 
-make_boxplots_per_celltype(train_anndata.obs, 'celltypes', 'major_axis_length', 'Figure 1.5 Boxplots of Major Axis Length by Cell Type in the obs Training Data', display_desc=True)
+make_boxplots_per_celltype(train_anndata.obs, 'cell_labels', 'major_axis_length', 'Figure 1.5 Boxplots of Major Axis Length by Cell Type in the obs Training Data', display_desc=True)
 
 
-# In[86]:
+# In[30]:
 
 
-make_boxplots_per_celltype(train_anndata.obs, 'celltypes', 'minor_axis_length', 'Figure 1.6 Boxplots of Minor Axis Length by Cell Type in the obs Training Data', display_desc=True)
+make_boxplots_per_celltype(train_anndata.obs, 'cell_labels', 'minor_axis_length', 'Figure 1.6 Boxplots of Minor Axis Length by Cell Type in the obs Training Data', display_desc=True)
 
 
-# In[87]:
+# In[31]:
 
 
-make_boxplots_per_celltype(train_anndata.obs, 'celltypes', 'eccentricity', 'Figure 1.7 Boxplots of Eccentricity by Cell Type in the obs Training Data', display_desc=True)
+make_boxplots_per_celltype(train_anndata.obs, 'cell_labels', 'eccentricity', 'Figure 1.7 Boxplots of Eccentricity by Cell Type in the obs Training Data', display_desc=True)
 
 
-# In[84]:
+# In[32]:
 
 
-make_boxplots_per_celltype(train_anndata.obs, 'celltypes', 'width_px', 'Boxplots of Width by Cell Type in the obs Training Data')
+make_boxplots_per_celltype(train_anndata.obs, 'cell_labels', 'width_px', 'Boxplots of Width by Cell Type in the obs Training Data')
 
 
-# In[85]:
+# In[33]:
 
 
-make_boxplots_per_celltype(train_anndata.obs, 'celltypes', 'height_px', 'Boxplots of Height by Cell Type in the obs Training Data')
+make_boxplots_per_celltype(train_anndata.obs, 'cell_labels', 'height_px', 'Boxplots of Height by Cell Type in the obs Training Data')
 
 
 # #### Interpretation
@@ -426,34 +464,35 @@ make_boxplots_per_celltype(train_anndata.obs, 'celltypes', 'height_px', 'Boxplot
 
 # ### Independent marker variables distributions
 
-# In[19]:
+# In[34]:
 
 
-df[marker_names].describe()
+expressions[marker_names].describe()
 
 
-# In[113]:
+# In[35]:
 
 
-make_histograms(df, marker_names, 'Figure 1.8 Histograms of the Markers', subplots_shape=(10, 4), display_desc=True, title_shift=0.9)
+make_histograms(expressions, marker_names, 'Figure 1.8 Histograms of the Markers', subplots_shape=(10, 4), display_desc=True, title_shift=0.9)
 
 
-# In[115]:
+# In[36]:
 
 
-make_boxplots(df, marker_names, 'Figure 1.9 Boxplots of the Markers in the Training Data', subplots_shape=(10, 4), display_desc=True, title_shift=0.9)
+make_boxplots(expressions, marker_names, 'Figure 1.9 Boxplots of the Markers in the Training Data', subplots_shape=(10, 4), display_desc=True, title_shift=0.9)
 
 
 # #### Interpretation
 # As visible on the Figures 1.8 and 1.9 the distributions are mostly right skewed with exceptions including proportinally more bell shaped DNA1, DNA2, CD33 and CD14 or bimodal Ecad.
 
+# ## 2. Intertype marker differentiation
 # ### Independent markers variables distributions per cell type
 
-# In[117]:
+# In[37]:
 
 
 marker_number = 0
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -486,11 +525,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # 14. **BnT**: Without specific context or clarification regarding the "BnT" designation, it's challenging to infer potential MPO expression patterns in this cell type. If "BnT" refers to a specific cell population, additional information would be needed to assess its MPO expression profile accurately.
 
-# In[118]:
+# In[38]:
 
 
 marker_number = 1
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -525,11 +564,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, Histone H3 expression is essential for maintaining chromatin structure and regulating gene expression across various cell types, but the levels and patterns may vary depending on the cell's activation state, differentiation status, and specific functions.
 
-# In[119]:
+# In[39]:
 
 
 marker_number = 2
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -562,11 +601,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # 14. **BnT**: As "BnT" is not a standard cell type designation commonly used in immunology or cell biology, it's challenging to infer specific SMA expression patterns without further context or clarification. If "BnT" refers to a specific cell type or population, additional information about its characteristics, lineage, or function would be needed to assess its potential SMA expression accurately. Without such context, it's difficult to provide a definitive answer regarding SMA expression in BnT cells. If you can provide more details or context about the "BnT" designation, I'd be happy to assist further.
 
-# In[120]:
+# In[40]:
 
 
 marker_number = 3
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -601,11 +640,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, CD16 expression is primarily associated with cells of the innate immune system, such as NK cells and neutrophils, rather than cells of the adaptive immune system, such as T cells and B cells. Its expression pattern can provide insights into the immune status and functionality of the analyzed cell populations in different physiological and pathological contexts.
 
-# In[121]:
+# In[41]:
 
 
 marker_number = 4
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -640,11 +679,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, CD38 expression varies across different cell types and is associated with various immune functions, including activation, differentiation, and effector responses, as well as antibody production in plasma cells.
 
-# In[124]:
+# In[42]:
 
 
 marker_number = 5
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -676,11 +715,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # 14. **BnT**: As "BnT" is not a standard cell type designation commonly used in immunology or cell biology, it's challenging to infer specific HLADR expression patterns without further context or clarification. If "BnT" refers to a specific cell type or population, additional information about its characteristics would be needed to assess its potential HLADR expression pattern accurately.
 
-# In[125]:
+# In[43]:
 
 
 marker_number = 6
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -715,11 +754,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, CD27 expression varies across different cell types and is associated with various immune functions, including activation, differentiation, and memory formation in lymphoid cells. Its expression pattern can provide insights into the immune status and functionality of the analyzed cell populations in different physiological and pathological contexts.
 
-# In[127]:
+# In[44]:
 
 
 marker_number = 7
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -753,11 +792,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # 14. **BnT**: As "BnT" is not a standard cell type designation commonly used in immunology or cell biology, it's challenging to infer specific CD15 expression patterns without further context or clarification. If "BnT" refers to a specific cell type or population, additional information about its characteristics, lineage, or function would be needed to assess its potential CD15 expression accurately. Without such context, it's difficult to provide a definitive answer regarding CD15 expression in BnT cells. If you can provide more details or context about the "BnT" designation, I'd be happy to assist further.
 
-# In[128]:
+# In[45]:
 
 
 marker_number = 8
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # 1. **MacCD163 (Macrophage CD163)**: Macrophages expressing CD163 are not typically associated with CD45RA expression. CD45RA is primarily found on lymphocytes and certain hematopoietic progenitor cells rather than macrophages.
@@ -788,11 +827,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # 14. **BnT**: As "BnT" is not a standard cell type designation, it's challenging to infer specific CD45RA expression patterns without further context or clarification. If "BnT" refers to a specific cell type or population, additional information about its characteristics, lineage, or function would be needed to assess its potential CD45RA expression pattern accurately.
 
-# In[129]:
+# In[46]:
 
 
 marker_number = 9
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -827,11 +866,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, CD163 expression is primarily associated with cells of the monocyte/macrophage lineage, particularly macrophages, and is not typically expressed by other immune cell types such as dendritic cells, lymphocytes, or neutrophils.
 
-# In[130]:
+# In[47]:
 
 
 marker_number = 10
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -866,11 +905,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, B2M expression is primarily associated with cells involved in antigen presentation, particularly MHC-I expression, and is crucial for immune recognition and surveillance.
 
-# In[131]:
+# In[48]:
 
 
 marker_number = 11
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -905,11 +944,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # In summary, CD20 expression is primarily associated with B cells and certain B cell malignancies, while other cell types are not expected to express CD20 under normal physiological conditions.
 
-# In[132]:
+# In[49]:
 
 
 marker_number = 12
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -943,11 +982,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, CD68 expression is primarily associated with cells of the monocyte/macrophage lineage, including macrophages and certain dendritic cell subsets. Its expression in other cell types, such as tumor cells or lymphocytes, is less common and may vary depending on specific contexts or pathological conditions.
 
-# In[133]:
+# In[50]:
 
 
 marker_number = 13
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -981,11 +1020,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, IDO1 expression varies across different cell types and is associated with immune regulation, tolerance induction, and immune evasion mechanisms, particularly in the context of tumors and regulatory immune cell subsets.
 
-# In[134]:
+# In[51]:
 
 
 marker_number = 14
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1019,11 +1058,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, CD3 expression is primarily associated with T cells and is involved in antigen recognition and T cell activation through the TCR complex. It is not typically expressed on other immune cell types such as macrophages, dendritic cells, NK cells, neutrophils, plasma cells, or B cells.
 
-# In[135]:
+# In[52]:
 
 
 marker_number = 15
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # 1. **MacCD163 (Macrophage CD163)**: Macrophages expressing CD163 may exhibit low to negligible expression of LAG3. LAG3 is primarily associated with lymphocytes and is not typically expressed by macrophages.
@@ -1056,11 +1095,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, LAG3 expression varies across different cell types and is primarily associated with lymphocytes, particularly CD4+ T cells and regulatory T cells, where it plays a crucial role in immune regulation and tolerance.
 
-# In[136]:
+# In[53]:
 
 
 marker_number = 16
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1095,11 +1134,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, CD11 expression varies across different cell types and is primarily associated with leukocytes, particularly myeloid cells such as neutrophils and some dendritic cell subsets, where it plays a role in adhesion, migration, and phagocytosis.
 
-# In[137]:
+# In[54]:
 
 
 marker_number = 17
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1134,11 +1173,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, PD1 expression is primarily associated with lymphocytes, particularly T cells, and is involved in regulating T cell activation, tolerance, and exhaustion. Its expression pattern can provide insights into the immune status and functionality of the analyzed cell populations in different physiological and pathological contexts.
 
-# In[138]:
+# In[55]:
 
 
 marker_number = 18
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1172,11 +1211,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # In summary, PDGFRb expression is primarily associated with mural cells, including pericytes and smooth muscle cells, which play crucial roles in vascular development and maintenance. Its expression in other cell types, particularly immune cells, is not commonly observed.
 
-# In[139]:
+# In[56]:
 
 
 marker_number = 19
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1210,11 +1249,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, CD7 expression varies across different cell types and is associated with various immune functions, including T cell activation, adhesion, and signaling. Its expression pattern can provide insights into the immune status and functionality of the analyzed cell populations in different physiological and pathological contexts.
 
-# In[140]:
+# In[57]:
 
 
 marker_number = 20
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # ##### Interpretation
@@ -1248,11 +1287,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, Granzyme B expression is primarily associated with cytotoxic immune cells such as NK cells and cytotoxic T lymphocytes (CTLs), which play a crucial role in immune surveillance and elimination of infected or malignant cells.
 
-# In[141]:
+# In[58]:
 
 
 marker_number = 21
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1286,11 +1325,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, PD-L1 expression varies across different cell types and is associated with various immune functions, including immune regulation, T cell activation, and immune evasion in the context of cancer. Its expression pattern can provide insights into the immune status and functionality of the analyzed cell populations in different physiological and pathological contexts.
 
-# In[142]:
+# In[59]:
 
 
 marker_number = 22
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # 1. **MacCD163 (Macrophage CD163)**: Macrophages are not typically associated with TCF7 expression, as it is primarily found in T cells and involved in their development and differentiation.
@@ -1323,11 +1362,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, TCF7 expression is primarily associated with T cell development and differentiation, particularly in CD4+ and CD8+ T cells, where it plays crucial roles in generating and maintaining memory T cell populations. Its expression in other cell types is less common and may indicate context-specific roles or aberrant expression patterns.
 
-# In[143]:
+# In[60]:
 
 
 marker_number = 23
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1361,11 +1400,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, CD45RO expression varies across different cell types and is often associated with memory T cells and activated immune cells involved in adaptive immune responses. Its expression pattern can provide insights into the immune status and functionality of the analyzed cell populations in different physiological and pathological contexts.
 
-# In[144]:
+# In[61]:
 
 
 marker_number = 24
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # ##### Interpretation
@@ -1400,11 +1439,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # In summary, FOXP3 expression is primarily associated with regulatory T cells (Tregs) and is involved in immune regulation and tolerance. While other cell types are not typically associated with FOXP3 expression, its presence in certain tumors or under specific pathological conditions may indicate immune regulatory mechanisms within the tumor microenvironment.
 
-# In[145]:
+# In[62]:
 
 
 marker_number = 25
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1438,11 +1477,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, ICOS expression is primarily associated with activated T cells and some B cell subsets, playing a role in T cell activation, differentiation, and regulation of immune responses. Its expression in other cell types is less common and may vary depending on specific contexts and conditions.
 
-# In[148]:
+# In[63]:
 
 
 marker_number = 26
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1476,11 +1515,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, CD8a expression is primarily associated with CD8+ cytotoxic T cells and is not expected to be expressed in other cell types listed.
 
-# In[149]:
+# In[64]:
 
 
 marker_number = 27
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1515,11 +1554,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, carbonic anhydrase expression may be observed in certain immune cells and tissue-resident cells, contributing to pH regulation and cellular homeostasis in physiological and pathological conditions. However, its expression pattern can vary widely depending on cell type, tissue context, and environmental factors.
 
-# In[150]:
+# In[65]:
 
 
 marker_number = 28
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1552,11 +1591,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # 14. **BnT**: As "BnT" is not a standard cell type designation commonly used in immunology or cell biology, it's challenging to infer specific CD33 expression patterns without further context or clarification. If "BnT" refers to a specific cell type or population, additional information about its characteristics, lineage, or function would be needed to assess its potential CD33 expression pattern accurately. Without such context, it's difficult to provide a definitive answer regarding CD33 expression in BnT cells. If you can provide more details or context about the "BnT" designation, I'd be happy to assist further.
 
-# In[151]:
+# In[66]:
 
 
 marker_number = 29
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1591,11 +1630,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, Ki67 expression varies across different cell types and is associated with active proliferation and cell cycle progression. Its expression pattern can provide insights into the proliferative status and activation state of the analyzed cell populations in different physiological and pathological contexts.
 
-# In[152]:
+# In[67]:
 
 
 marker_number = 30
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1629,11 +1668,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, VISTA expression varies across different cell types and plays a role in immune regulation, tolerance, and evasion of antitumor immune responses. Its expression pattern can provide insights into the immunological characteristics and functions of the analyzed cell populations in different physiological and pathological contexts.
 
-# In[153]:
+# In[68]:
 
 
 marker_number = 31
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1666,11 +1705,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # 14. **BnT**: As "BnT" is not a standard cell type designation, it's challenging to infer specific CD40 expression patterns without further context or clarification.
 
-# In[154]:
+# In[69]:
 
 
 marker_number = 32
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1702,11 +1741,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # 14. **BnT**: As "BnT" is not a standard cell type designation, it's challenging to infer specific CD4 expression patterns without further context or clarification. If "BnT" refers to a specific cell type or population, additional information would be needed to assess its potential CD4 expression accurately.
 
-# In[155]:
+# In[70]:
 
 
 marker_number = 33
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1740,11 +1779,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # In summary, CD14 expression is primarily associated with cells of the myeloid lineage, particularly monocytes and macrophages, involved in innate immune responses and phagocytosis. Its expression in other cell types, such as dendritic cells or tumor cells, may vary depending on specific conditions and contexts.
 
-# In[156]:
+# In[71]:
 
 
 marker_number = 34
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1778,11 +1817,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, E-cadherin expression is primarily associated with epithelial tissues, where it mediates cell-cell adhesion and tissue integrity. Its expression in immune cells is limited, and it is not typically expressed by the immune cell types listed.
 
-# In[157]:
+# In[72]:
 
 
 marker_number = 35
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1818,11 +1857,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # In summary, CD303 expression is primarily associated with plasmacytoid dendritic cells (pDCs), and it is not typically expressed on other cell types such as macrophages, T cells, B cells, or neutrophils.
 
-# In[158]:
+# In[73]:
 
 
 marker_number = 36
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1854,11 +1893,11 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # 14. **BnT**: As "BnT" is not a standard cell type designation, it's challenging to infer specific CD206 expression patterns without further context or clarification. If "BnT" refers to a specific cell type or population, additional information about its characteristics would be needed to assess its potential CD206 expression pattern accurately.
 
-# In[159]:
+# In[74]:
 
 
 marker_number = 37
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
@@ -1894,78 +1933,115 @@ make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{ma
 # 
 # Overall, the expression of cleaved PARP varies across different cell types and is associated with apoptotic processes, cellular stress, and immune responses. Its expression pattern can provide insights into the physiological state and dynamics of cell populations under different conditions, including tissue homeostasis, immune activation, and disease progression.
 
-# In[160]:
+# In[75]:
 
 
 marker_number = 38
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
 # 
 
-# In[162]:
+# In[76]:
 
 
 marker_number = 39
-make_boxplots_per_celltype(df, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
 # #### Interpretation
 # 
 
-# ## 2. High level correlation analysis
+# ## 3. High level correlation analysis
 # REQUIREMENT: Correlation patterns between markers and cell types (at least 3) with a biological explanation,
 
-# ### Independent obs variables correlations
+# ### Correlation analysis utils
 
-# In[23]:
-
-
-make_corr_plot(train_anndata.obs, obs_quant_vars, 'Correlation Matrix of Quantitative Variables in the obs Training Data (spearman)', method='spearman')
-make_corr_plot(train_anndata.obs, obs_quant_vars, 'Correlation Matrix of Quantitative Variables in the obs Training Data (pearson)', method='pearson')
+# In[145]:
 
 
-# ### Independent gene expression variables correlations
+def make_barplot(x, y, title, xlab, ylab, rotation=0):
+    r"""
+    Make a barplot.
+    """
+    plt.figure(figsize=(10, 4))
+    plt.bar(x, y, color='black')
+    plt.title(title)
+    plt.xlabel(xlab)
+    plt.ylabel(ylab)
+    plt.xticks(rotation=rotation)
+    plt.show()
 
-# In[24]:
+def get_ranked_pairwise_correlations(
+        df: DataFrame,
+        method: str
+        ) -> Tuple[ndarray, ndarray]:
+    r"""
+    Get sorted by absolute value pairwise correlations of the columns in the dataframe.
+    """
+    col_names = np.array(df.columns)
+    n = len(col_names)
+    row_idx, col_idx = np.where(np.tril(np.ones((n, n), dtype=bool), k=-1))
+    row_marker_names = col_names[row_idx]
+    col_marker_names = col_names[col_idx]
+    corr_values = df.corr(method=method).values[row_idx, col_idx]
+    sorted_idx = abs(corr_values).argsort()[::-1]
+    
+    return np.array([rmn + 'x' + cmn for rmn, cmn in zip(row_marker_names[sorted_idx], col_marker_names[sorted_idx])]), corr_values[sorted_idx]
 
+def make_corr_plot(
+        df: DataFrame,
+        vars: List[str],
+        correlation_threshold: float = 0,
+        title: str = '',
+        method: str = 'spearman',
+        annot: bool = True
+        ) -> None:
+    r"""
+    Plot a correlation matrix of the given variables in the dataframe.
+    """
 
-make_corr_plot(df, marker_names, 'Correlation Matrix of Marker Expression in the Training Data (spearman)', method='spearman')
-
-
-# In[25]:
-
-
-make_corr_plot(df, marker_names, 'Correlation Matrix of Marker Expression in the Training Data (pearson)', method='pearson')
-
-
-# In[26]:
-
-
-df[marker_names].describe()
-
-
-# ### Further correlation analysis utils
-
-# In[164]:
-
-
-def logistic_regression_importance_ranking(X, y):
+    correlation_matrix = df[vars].corr(method=method) * 100
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(correlation_matrix, annot=annot, fmt=".0f", vmin=-100, vmax=100, linewidth=0.5, mask=abs(correlation_matrix.values) < correlation_threshold, cmap=sns.diverging_palette(255, 10, as_cmap=True))
+    plt.title(title)
+    
+    plt.show()
+    
+def logistic_regression_importance_ranking(
+        X: ndarray,
+        y: ndarray,
+        ) -> List[int]:
     clf = LogisticRegression(max_iter=1000)
     clf.fit(X=X, y=y)
     return (abs(clf.coef_)[0].argsort()[::-1]).tolist()
-
-def linear_regression_importance_ranking(X, y):
+    
+def linear_regression_importance_ranking(
+        X: ndarray,
+        y: ndarray
+        ) -> List[int]:
     lrm = LinearRegression()
     lrm.fit(X, y)
     return (abs(lrm.coef_).argsort()[::-1]).tolist()
 
-def mutual_information_importance_ranking_class(X, y):
+def mutual_information_importance_ranking_class(
+        X: ndarray,
+        y: ndarray,
+        ) -> List[int]:
     return (mutual_info_classif(X, y).argsort()[::-1]).tolist()
-
-def mutual_information_importance_ranking_reg(X, y):
+    
+def mutual_information_importance_ranking_reg(
+        X: ndarray,
+        y: ndarray
+        ) -> List[int]:
     return (mutual_info_regression(X, y).argsort()[::-1]).tolist()
+
+def F_stat_importance_ranking_class(
+    X: ndarray,
+    y: ndarray
+    ) -> List[int]:
+    return mutual_info_classif(X=X, y=y).argsort()[::-1].tolist()
 
 def plot_2d(x, y, classes, xlab, ylab, title=None):
     r"""
@@ -1986,7 +2062,25 @@ def plot_2d(x, y, classes, xlab, ylab, title=None):
     plt.legend()
     plt.show()
 
-def plot_important_factors(factors, target, target_cat, focus_celltype=None, mutual_info_only=False):
+def plot_2d_sns(x, y, classes, xlab, ylab, classes_name, title=None):
+    r"""
+    Plot a 2D scatter plot of the given x and y values, colored by the given classes using seaborn.
+    """
+    df = pd.DataFrame({xlab:x, ylab:y, classes_name:classes})
+    plt.figure(figsize=(10, 8))
+    sns.scatterplot(data=df, x=xlab, y=ylab, hue=classes_name, alpha=0.3, s=3)
+    if title:
+        plt.title(title)
+    plt.show()
+
+def plot_important_factors(
+        factors: ndarray,
+        target: ndarray,
+        target_cat: bool,
+        classes_name: str,
+        focus_celltype: Optional[str] = None,
+        mutual_info_only: bool = False
+        ) -> None:
     r"""
     Plot the most important factors based on logistic regression and mutual information.
     """
@@ -2000,11 +2094,18 @@ def plot_important_factors(factors, target, target_cat, focus_celltype=None, mut
         rank1 = linear_regression_importance_ranking(factors, target)
         rank2 = mutual_information_importance_ranking_reg(factors, target)
     
-    plot_2d(factors[:, rank2[0]], factors[:, rank2[1]], target, xlab=f"Factor {rank2[0]}", ylab=f"Factor {rank2[1]}", title='Factors selected with Mutual Information')
+    plot_2d_sns(factors[:, rank2[0]], factors[:, rank2[1]], target, xlab=f"Factor {rank2[0]}", ylab=f"Factor {rank2[1]}", classes_name=classes_name, title='Factors selected with Mutual Information')
     if not mutual_info_only:
-        plot_2d(factors[:, rank1[0]], factors[:, rank1[1]], target, xlab=f"Factor {rank1[0]}", ylab=f"Factor {rank1[1]}", title='Factors selected with Logistic Regression')
+        plot_2d_sns(factors[:, rank1[0]], factors[:, rank1[1]], target, xlab=f"Factor {rank1[0]}", ylab=f"Factor {rank1[1]}", classes_name=classes_name, title='Factors selected with Logistic Regression')
 
-def plot_features_components_correlation(components, feature_names, correlation_threshold=0, title='', xlab='', display_desc=False):
+def plot_features_components_correlation(
+        components: ndarray,
+        feature_names: ndarray,
+        correlation_threshold: float = 0,
+        title: str = '',
+        xlab: str = '',
+        display_desc: bool = False
+        ) -> None:
     r"""
     Plot the correlation of the features with the components.
     """
@@ -2017,125 +2118,348 @@ def plot_features_components_correlation(components, feature_names, correlation_
     plt.show()
 
 
+# ### Independent obs variables correlations
+
+# In[78]:
+
+
+make_corr_plot(train_anndata.obs, obs_quant_vars, 10, 'Correlation Matrix of Quantitative Variables in the obs Training Data (spearman)', method='spearman')
+make_corr_plot(train_anndata.obs, obs_quant_vars, 10,'Correlation Matrix of Quantitative Variables in the obs Training Data (pearson)', method='pearson')
+
+
+# ### Independent gene expression variables correlations - visual examination
+
+# In[79]:
+
+
+make_corr_plot(expressions, marker_names, 0, 'Correlation Matrix of Marker Expression in the Training Data (spearman)', method='spearman', annot=False)
+
+
+# In[80]:
+
+
+make_corr_plot(expressions, marker_names, 50, 'Correlation Matrix of Marker Expression in the Training Data (spearman) thresholded at 0.5', method='spearman', annot=False)
+
+
+# In[81]:
+
+
+make_corr_plot(expressions, marker_names, 0, 'Correlation Matrix of Marker Expression in the Training Data (pearson)', method='pearson', annot=False)
+
+
+# In[82]:
+
+
+make_corr_plot(expressions, marker_names, 50, 'Correlation Matrix of Marker Expression in the Training Data (pearson) thresholded at 0.5', method='pearson', annot=False)
+
+
+# ### Independent gene expression variables correlations - biggest correlations
+
+# In[83]:
+
+
+pairwise_correlation_names_spearman, corr_vals_spearman = get_ranked_pairwise_correlations(expressions[marker_names], method='spearman')
+print("The pariwise Spearman correlations with the biggest absolute values are :
+")
+for name, val in zip(pairwise_correlation_names_spearman[:5], corr_vals_spearman[:5]):
+    print(f"{name} : {val:.2f}")
+
+
+# #### Interpretation
+# 1. **ICOS x FOXP3**:
+#    - ICOS is a protein expressed on activated T cells involved in regulating immune responses.
+#    - FOXP3 is a transcription factor expressed in regulatory T cells (Tregs), essential for their function in immune suppression.
+#    - The correlation suggests a relationship between T cell activation (ICOS) and regulatory T cell function (FOXP3), possibly indicating activated T cells' involvement in immune regulation or tolerance.
+# 
+# 2. **CD163 x CD16**:
+#    - CD163 is a scavenger receptor on macrophages, involved in clearing hemoglobin-haptoglobin complexes.
+#    - CD16 (FcγRIII) is a receptor on natural killer cells and macrophages, mediating antibody-dependent cell-mediated cytotoxicity (ADCC).
+#    - The correlation implies a link between macrophage activation (CD163) and the effector functions of natural killer cells and macrophages (CD16), possibly in the context of infection or inflammation.
+# 
+# 3. **CD11c x CD16**:
+#    - CD11c (Integrin alpha X) is expressed on dendritic cells, monocytes, and natural killer cells, playing a role in adhesion and migration.
+#    - CD16 is a receptor involved in ADCC.
+#    - The correlation suggests a connection between dendritic cell activation or maturation (CD11c) and the effector functions of natural killer cells and macrophages (CD16), possibly indicating antigen presentation and immune cell activation.
+# 
+# 4. **CD4 x CD3**:
+#    - CD4 is a co-receptor on helper T cells, crucial for immune response coordination.
+#    - CD3 is a protein complex involved in T cell receptor signaling.
+#    - The correlation likely reflects the relationship between helper T cell activation (CD4) and T cell receptor signaling (CD3), indicating helper T cells' involvement in antigen recognition and immune activation.
+
+# In[84]:
+
+
+pairwise_correlation_names_pearson, corr_vals_pearson = get_ranked_pairwise_correlations(expressions[marker_names], method='pearson')
+print("The pariwise Pearson correlations with the biggest absolute values are :
+")
+for name, val in zip(pairwise_correlation_names_pearson[:5], corr_vals_pearson[:5]):
+    print(f"{name} : {val:.2f}")
+
+
+# #### Inerpretation
+# 1. **CD20 x CD45RA**:
+#    - CD20 is a cell surface marker expressed primarily on B cells, while CD45RA is a protein tyrosine phosphatase found on the surface of T cells and B cells.
+#    - The correlation between CD20 and CD45RA might suggest a relationship between B cell activation (CD20) and a subset of naive T cells (CD45RA), indicating potential interactions between B cells and certain T cell populations, possibly in the context of immune activation or regulation.
+# 
+# 2. **ICOS x FOXP3**:
+#    - ICOS is a protein expressed on activated T cells, while FOXP3 is a transcription factor primarily expressed in regulatory T cells (Tregs).
+#    - This correlation might indicate a connection between T cell activation (ICOS) and regulatory T cell function (FOXP3), suggesting a potential role for activated T cells in modulating immune responses through regulatory mechanisms.
+# 
+# 3. **CD206 x CD163**:
+#    - CD206, also known as the mannose receptor, is primarily expressed on macrophages and dendritic cells, while CD163 is a scavenger receptor expressed on monocytes and macrophages.
+#    - The correlation between CD206 and CD163 could suggest a relationship between macrophage activation (CD206) and a subset of macrophages specialized in hemoglobin scavenging (CD163), possibly indicating coordinated functions within the macrophage population in response to specific stimuli or conditions.
+# 
+# 4. **CD8a x CD3**:
+#    - CD8a is a marker found on cytotoxic T cells (CD8+ T cells), while CD3 is a protein complex associated with the T cell receptor (TCR) complex.
+#    - This correlation likely reflects the association between cytotoxic T cell activation (CD8a) and T cell receptor signaling (CD3), indicating the involvement of cytotoxic T cells in antigen recognition and immune responses mediated by TCR signaling pathways.
+
+# ### Cell type x marker correlation analysis
+
+# In[243]:
+
+
+markers_mi = mutual_info_classif(X=expressions[marker_names], y=expressions['cell_labels'])
+mi_sorted_idx = markers_mi.argsort()[::-1]
+make_barplot(marker_names[mi_sorted_idx], markers_mi[mi_sorted_idx], 'Mutual Information of Markers with Indication for cell type', 'Marker', 'Mutual Information', rotation=90)
+
+
+# In[139]:
+
+
+markers_F = f_classif(X=expressions[marker_names], y=expressions['cell_labels'])
+F_sorted_idx = markers_F[0].argsort()[::-1]
+make_barplot(marker_names[F_sorted_idx], markers_F[0][F_sorted_idx], 'F-statistic of Markers with Cell Type', 'Marker', 'F-statistic', rotation=90)
+
+
+# In[141]:
+
+
+markers_lr_coef = clf = LogisticRegression(max_iter=1000).fit(X=expressions[marker_names].values / expressions[marker_names].values.std(axis=0, keepdims=True), y=expressions['cell_labels']).coef_[0]
+lr_sorted_idx = abs(markers_lr_coef).argsort()[::-1]
+make_barplot(marker_names[lr_sorted_idx], markers_lr_coef[lr_sorted_idx], 'Logistic Regression Coefficients of Markers with Cell Type', 'Marker', 'Coefficient', rotation=90)
+
+
+# #### Interpretation
+# Mutual information, F-statistics and logistic regression coefficients suggest, that `CD3` is an important marker in terms of differentiating celltypes. Both mutual information and F-statistics suggest, that `CD8a` is an important marker.
+
+# In[142]:
+
+
+plot_2d_sns(expressions['CD3'].values, expressions['CD8a'].values, expressions['cell_labels'].values, 'CD3', 'CD8a', 'cell_labels', 'CD3 vs CD8a expression')
+
+
 # ### PCA
 
-# In[28]:
+# In[143]:
 
 
 pca_on_scaled = PCA(n_components=10)
 pca_on_unscaled = PCA(n_components=10)
-pca_transformed_scaled_markers = pca_on_scaled.fit_transform(df[marker_names] / df[marker_names].std())
-pca_transformed_unscaled_markers = pca_on_unscaled.fit_transform(df[marker_names])
+pca_transformed_scaled_markers = pca_on_scaled.fit_transform(expressions[marker_names] / expressions[marker_names].std())
+pca_transformed_unscaled_markers = pca_on_unscaled.fit_transform(expressions[marker_names])
 
 
 # #### Components scatterplot - scaled markers
 
-# In[29]:
+# In[146]:
 
 
-plot_important_factors(pca_transformed_scaled_markers, targets_np.copy(), True, focus_celltype=None)
+plot_important_factors(pca_transformed_scaled_markers, targets_np.copy(), True, classes_name='cell_labels', focus_celltype=None)
 
 
-# In[30]:
+# In[149]:
 
 
-plot_important_factors(pca_transformed_scaled_markers, targets_np.copy(), True, focus_celltype='Tumor')
+plot_important_factors(pca_transformed_scaled_markers, targets_np.copy(), True, classes_name='cell_types', focus_celltype='Tumor')
 
 
 # #### Components scatterplot - unscaled markers
 
-# In[31]:
+# In[150]:
 
 
-plot_important_factors(pca_transformed_unscaled_markers, targets_np.copy(), True, focus_celltype=None)
+plot_important_factors(pca_transformed_unscaled_markers, targets_np.copy(), True, classes_name='cell_types', focus_celltype=None)
 
 
-# In[32]:
+# In[151]:
 
 
-plot_important_factors(pca_transformed_unscaled_markers, targets_np.copy(), True, focus_celltype='Tumor')
+plot_important_factors(pca_transformed_unscaled_markers, targets_np.copy(), True, classes_name='cell_types', focus_celltype='Tumor')
 
 
 # #### Components importance analysis
 
-# In[33]:
+# In[152]:
 
 
-plt.plot(pca_on_scaled.explained_variance_ratio_, label='Scaled markers')
-plt.plot(pca_on_unscaled.explained_variance_ratio_, label='Unscaled markers')
-plt.xlabel('Principal Component')
-plt.ylabel('Explained Variance Ratio')
-plt.legend()
-plt.show()
+make_barplot(np.arange(1, 11), pca_on_scaled.explained_variance_ratio_, 'Explained Variance Ratio of Principal Components (Scaled)', 'Principal Component', 'Explained Variance Ratio')
 
 
-# In[34]:
+# In[153]:
 
 
-plot_features_components_correlation(pca_on_scaled.components_, marker_names, correlation_threshold=20)
+make_barplot(np.arange(1, 11), pca_on_unscaled.explained_variance_ratio_, 'Explained Variance Ratio of Principal Components (Unscaled)', 'Principal Component', 'Explained Variance Ratio')
 
 
-# In[35]:
+# In[155]:
 
 
-plot_features_components_correlation(pca_on_unscaled.components_, marker_names, correlation_threshold=20)
+plot_features_components_correlation(pca_on_scaled.components_, marker_names, correlation_threshold=20, title='Correlation of Features with Principal Components (Scaled)', xlab='Principal Component', display_desc=True)
+
+
+# #### Interpretation
+# 1. CD16: Also known as FcγRIII, CD16 is a cell surface molecule expressed primarily on natural killer (NK) cells and macrophages. It plays a role in antibody-dependent cellular cytotoxicity (ADCC) and phagocytosis.
+# 
+# 2. HLADR: Human leukocyte antigen-DR (HLA-DR) is a major histocompatibility complex (MHC) class II molecule expressed on antigen-presenting cells (APCs), including dendritic cells, macrophages, and B cells. It is involved in presenting antigens to CD4+ T cells.
+# 
+# 3. B2M: Beta-2 microglobulin (B2M) is a component of the major histocompatibility complex (MHC) class I molecule. It is expressed on the surface of most nucleated cells and is important for antigen presentation to CD8+ T cells.
+# 
+# 4. CD3: CD3 is a complex of proteins associated with the T cell receptor (TCR) and is expressed on all mature T cells. It is essential for T cell development, activation, and signal transduction.
+# 
+# 5. CD11c: CD11c is a marker for dendritic cells, which are professional APCs involved in initiating immune responses by presenting antigens to T cells.
+# 
+# 6. CD45RO: CD45RO is a marker for memory T cells. It is expressed on activated and memory T cells and plays a role in immune responses to previously encountered antigens.
+# 
+# 7. CD8a: CD8a is a marker for cytotoxic T cells (CD8+ T cells). It is involved in recognizing and killing virus-infected or abnormal cells.
+# 
+# 8. CD40: CD40 is a cell surface receptor expressed on APCs, including dendritic cells, B cells, and macrophages. It plays a crucial role in antigen presentation, co-stimulation, and immune cell activation.
+# 
+# 9. CD4: CD4 is a co-receptor for the T cell receptor (TCR) and is primarily expressed on helper T cells (CD4+ T cells). It interacts with MHC class II molecules on APCs and is important for T cell activation and regulation of immune responses.
+# 
+# 10. CD14: CD14 is a marker for monocytes and macrophages. It plays a role in the recognition of bacterial lipopolysaccharides (LPS) and initiation of immune responses to bacterial infections.
+# 
+# Based on the correlation coefficients provided, it appears that the principal component in PCA (Principal Component Analysis) that is most significantly correlated with these marker expressions encompasses a variety of immune cell populations and their activation states. The markers with higher correlation coefficients (e.g., HLADR, CD45RO, CD8a, CD4) are associated with activated or memory T cells, antigen-presenting cells (APCs), and cytotoxic T cells, indicating a possible link to immune activation or inflammation. The inclusion of markers such as CD16 (expressed on NK cells and macrophages) and CD14 (expressed on monocytes and macrophages) suggests involvement of innate immune cells as well. Overall, the principal component may reflect the overall state of immune activation or inflammation in the analyzed samples.
+
+# In[156]:
+
+
+plot_features_components_correlation(pca_on_unscaled.components_, marker_names, correlation_threshold=20, title='Correlation of Features with Principal Components (Unscaled)', xlab='Principal Component', display_desc=True)
 
 
 # ### Factor Analysis
 
-# In[36]:
+# In[157]:
 
 
 fa_on_scaled = FactorAnalysis(n_components=10)
 fa_on_unscaled = FactorAnalysis(n_components=10)
-fa_transformed_scaled_markers = fa_on_scaled.fit_transform(df[marker_names] / df[marker_names].std())
-fa_transformed_unscaled_markers = fa_on_unscaled.fit_transform(df[marker_names])
+fa_transformed_scaled_markers = fa_on_scaled.fit_transform(expressions[marker_names] / expressions[marker_names].std())
+fa_transformed_unscaled_markers = fa_on_unscaled.fit_transform(expressions[marker_names])
 
 
 # #### Factor scatterplot - scaled markers
 
-# In[37]:
+# In[158]:
 
 
-plot_important_factors(fa_transformed_scaled_markers, targets_np.copy(), True, focus_celltype=None)
+plot_important_factors(fa_transformed_scaled_markers, targets_np.copy(), True, classes_name='cell_types', focus_celltype=None)
 
 
-# In[38]:
+# In[159]:
 
 
-plot_important_factors(fa_transformed_scaled_markers, targets_np.copy(), True, focus_celltype='Tumor')
+plot_important_factors(fa_transformed_scaled_markers, targets_np.copy(), True, classes_name='cell_types', focus_celltype='Tumor')
 
 
 # #### Factor scatterplot - unscaled markers
 
-# In[39]:
+# In[160]:
 
 
-plot_important_factors(fa_transformed_unscaled_markers, targets_np.copy(), True, focus_celltype=None)
+plot_important_factors(fa_transformed_unscaled_markers, targets_np.copy(), True, classes_name='cell_types', focus_celltype=None)
 
 
-# In[40]:
+# In[161]:
 
 
-plot_important_factors(fa_transformed_unscaled_markers, targets_np.copy(), True, focus_celltype='Tumor')
+plot_important_factors(fa_transformed_unscaled_markers, targets_np.copy(), True, classes_name='cell_types', focus_celltype='Tumor')
 
 
 # #### Components importance analysis
 
-# In[41]:
+# In[162]:
 
 
-plot_features_components_correlation(fa_on_scaled.components_, marker_names, correlation_threshold=20, title='Factor Analysis on Scaled Markers', xlab='Factors', display_desc=True)
+plot_features_components_correlation(fa_on_scaled.components_, marker_names, correlation_threshold=20, title='Correlation of Features with Factors (Scaled)', xlab='Factors', display_desc=True)
 
 
-# In[42]:
+# In[163]:
 
 
-plot_features_components_correlation(fa_on_unscaled.components_, marker_names, correlation_threshold=20)
+plot_features_components_correlation(fa_on_unscaled.components_, marker_names, correlation_threshold=20, title='Correlation of Features with Factors (Unscaled)', xlab='Factors', display_desc=True)
 
 
-# ## 3. Intertype marker differentiation
-# REQUIREMENT: Three biologically driven patterns of intertype marker differentiation (e.g., Tumor PDL1+ vs Tumor PDL1-, Mac CD206+ vs Mac CD206-, etc.),
+# One could look at factors correlation as well when attempting to interprete the factors.
+
+# ## 4. Intratype marker differentiation
+# REQUIREMENT: Three biologically driven patterns of intratype (changed from intertype based on the example) marker differentiation (e.g., Tumor PDL1+ vs Tumor PDL1-, Mac CD206+ vs Mac CD206-, etc.),
+
+# In[240]:
+
+
+def make_lmplot(df, marker1, marker2, hue, class_names, focus_class):
+    sns.lmplot(data=df[df[class_names].values == focus_class], x='CD8a', y='FOXP3', hue=hue, order=1, height=12, aspect=1, scatter_kws={'alpha':0.2, 's':8, 'edgecolor':'white'}, line_kws={'linewidth':1})
+    plt.title(f'Scatterplot of {marker1} and {marker2} with regression lines by {hue} for celltype {focus_class}')
+    plt.show()
+
+
+# In[232]:
+
+
+expressions_with_indication = pd.concat([expressions, pd.DataFrame(train_anndata.obs['Indication'].values).rename(columns={0:'Indication'})], axis=1)
+expressions_with_indication[marker_names] = expressions_with_indication[marker_names].values / expressions_with_indication[marker_names].values.std(axis=0, keepdims=True)
+
+
+# In[236]:
+
+
+focus_class = 'Tumor'
+markers_mi_ind = mutual_info_classif(X=expressions_with_indication[expressions_with_indication['cell_labels'] == focus_class][marker_names], y=expressions_with_indication[expressions_with_indication['cell_labels'] == focus_class]['Indication'])
+mi_ind_sorted_idx = markers_mi_ind.argsort()[::-1]
+make_barplot(marker_names[mi_ind_sorted_idx], markers_mi_ind[mi_ind_sorted_idx], 'Mutual Information of Markers with Cell Type', 'Marker', 'Mutual Information', rotation=90)
+
+
+# In[ ]:
+
+
+def identify_and_plot_markers_per_celltype()
+# markers_lr_coef = clf = LogisticRegression(max_iter=1000).fit(X=expressions[marker_names].values / expressions[marker_names].values.std(axis=0, keepdims=True), y=expressions['cell_labels']).coef_[0]
+# lr_sorted_idx = abs(markers_lr_coef).argsort()[::-1]
+# make_barplot(marker_names[lr_sorted_idx], markers_lr_coef[lr_sorted_idx], 'Logistic Regression Coefficients of Markers with Cell Type', 'Marker', 'Coefficient', rotation=90)
+
+
+# In[169]:
+
+
+marker_names
+
+
+# In[238]:
+
+
+make_lmplot(expressions_with_indication, 'Ecad', 'TCF7', 'Indication', 'cell_labels', focus_class)
+
+
+# In[231]:
+
+
+def make_lmplot(df, marker1, marker2, hue, class_names, focus_class):
+    sns.lmplot(data=df[df[class_names].values == focus_class], x='CD8a', y='FOXP3', hue=hue, order=1, height=12, aspect=1, scatter_kws={'alpha':0.2, 's':8, 'edgecolor':'white'}, line_kws={'linewidth':1})
+    plt.title(f'Scatterplot of {marker1} and {marker2} with regression lines by {hue}')
+    plt.show()
+
+
+# In[203]:
+
+
+sns.regplot(data=expressions_with_indication[expressions_with_indication['cell_labels'].values == 'Tumor'], x='CD8a', y='FOXP3')
+
+
+# In[ ]:
+
+
+sns.scatterplot(expressions_with_indication, x='CD8a', y='FOXP3', hue='Indication')
+
 
 # do a scatterplot colored by the PDL with the regression based factor selection as before but just for the selected types
 
