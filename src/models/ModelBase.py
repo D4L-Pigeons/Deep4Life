@@ -1,6 +1,7 @@
 import anndata
 import numpy as np
 
+
 class ModelBase:
 
     def train(self, data: anndata.AnnData) -> None:

@@ -1,12 +1,13 @@
+import time
+
+import anndata
+import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import pandas as pd
-from sklearn.model_selection import  train_test_split
+from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
-import time
-import anndata
-import numpy as np
 
 from models.ModelBase import ModelBase
 
@@ -47,13 +48,13 @@ class TorchMLP(ModelBase):
         return pred_labels
 
     def save(self, file_path: str) -> None:
-        raise NotImplementedError()
+        torch.save(self.mlp.state_dict(), file_path)
 
     def load(self, file_path: str) -> None:
-        raise NotImplementedError()
+        self.mlp.load_state_dict(torch.load(file_path))
     
     def _train(self, X_train, y_train, log=False, early_stopping=False):
-        # train config. Probably it should be moved to args
+        # train config. Probably it should be moved to config directory
         BATCH_SIZE = 200
         LR = 0.001
         WEIGHT_DECAY = 0.0001

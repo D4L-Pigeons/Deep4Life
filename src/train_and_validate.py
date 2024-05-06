@@ -1,16 +1,17 @@
-import torch
-import anndata
-from sklearn.model_selection import KFold
-from datasets.load_d4ls import load_full_anndata
-from models.ModelBase import ModelBase
-from models.xgboost import XGBoostModel
 import argparse
 from pathlib import Path
-from models.vanilla_stellar import VanillaStellarReduced
-import yaml
 
-from models.torch_mlp import TorchMLP
+import anndata
+import torch
+import yaml
+from sklearn.model_selection import KFold
+
+from datasets.load_d4ls import load_full_anndata
+from models.ModelBase import ModelBase
 from models.sklearn_mlp import SklearnMLP
+from models.torch_mlp import TorchMLP
+from models.vanilla_stellar import VanillaStellarReduced
+from models.xgboost import XGBoostModel
 
 CONFIG_PATH: Path = Path(__file__).parent / "config"
 

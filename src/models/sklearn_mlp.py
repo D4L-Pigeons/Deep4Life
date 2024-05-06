@@ -1,10 +1,10 @@
-from sklearn.neural_network import MLPClassifier
-from xgboost import XGBClassifier
-from sklearn.preprocessing import MinMaxScaler
 import anndata
 import numpy as np
+from joblib import dump, load
+from sklearn.neural_network import MLPClassifier
 
 from models.ModelBase import ModelBase
+
 
 class SklearnMLP(ModelBase):
     def __init__(self, args):
@@ -29,7 +29,7 @@ class SklearnMLP(ModelBase):
         return data.obs["cell_labels"].cat.categories[prediction].to_numpy()
     
     def save(self, file_path: str) -> None:
-        raise NotImplementedError()
+        dump(self.mlp_classifier, file_path) 
 
     def load(self, file_path: str) -> None:
-        raise NotImplementedError()
+        self.mlp_classifier = load(file_path) 

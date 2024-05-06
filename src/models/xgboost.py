@@ -1,7 +1,7 @@
-from xgboost import XGBClassifier
-from sklearn.preprocessing import MinMaxScaler
 import anndata
 import numpy as np
+from sklearn.preprocessing import MinMaxScaler
+from xgboost import XGBClassifier
 
 from models.ModelBase import ModelBase
 
@@ -36,9 +36,9 @@ class XGBoostModel(ModelBase):
         return data.obs["cell_labels"].cat.categories[prediction].to_numpy()
 
     def save(self, file_path: str) -> None:
-        raise NotImplementedError()
+        self.xgboost.save_model(file_path)
 
     def load(self, file_path: str) -> None:
-        raise NotImplementedError()
+        self.xgboost.load_model(file_path)
 
         
