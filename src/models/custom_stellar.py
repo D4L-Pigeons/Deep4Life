@@ -1,4 +1,4 @@
-from vanilla_stellar import VanillaStellarEncoder, VanillaStellarClassifficationHead
+from models.vanilla_stellar import VanillaStellarEncoder, VanillaStellarClassifficationHead
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -176,7 +176,7 @@ class CustomStellarReduced(ModelBase):
         self.cfg = cfg
         self.device = torch.device(cfg.device)
         self.model = CustomStellarModel(
-            ENCODER_IMPLEMENTATIONS[cfg.encoder_implementation],
+            ENCODER_IMPLEMENTATIONS[cfg.encoder_impl],
             CLASSIFICATION_HEAD_IMPLEMENTATIONS[cfg.classification_head_impl],
             cfg.input_dim,
             cfg.hid_dim,
@@ -187,7 +187,7 @@ class CustomStellarReduced(ModelBase):
 
     def train(self, data: anndata.AnnData) -> None:
         self.model = CustomStellarModel(
-            ENCODER_IMPLEMENTATIONS[self.cfg.encoder_implementation],
+            ENCODER_IMPLEMENTATIONS[self.cfg.encoder_impl],
             CLASSIFICATION_HEAD_IMPLEMENTATIONS[self.cfg.classification_head_impl],
             self.cfg.input_dim,
             self.cfg.hid_dim,

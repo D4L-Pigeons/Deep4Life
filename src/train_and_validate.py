@@ -7,6 +7,7 @@ from models.xgboost import XGBoostModel
 import argparse
 from pathlib import Path
 from models.vanilla_stellar import VanillaStellarReduced
+from models.custom_stellar import CustomStellarReduced
 import yaml
 
 from models.torch_mlp import TorchMLP
@@ -46,7 +47,8 @@ def load_config(args):
 
 def create_model(args, config) -> ModelBase:
     if args.method == "stellar":
-        return VanillaStellarReduced(config)
+        # return VanillaStellarReduced(config)
+        return CustomStellarReduced(config)
     elif args.method == "torch_mlp":
         return TorchMLP(config)
     elif args.method == "sklearn_mlp":

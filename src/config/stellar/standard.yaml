@@ -26,3 +26,7 @@ target_labels:
   - Tumor
   - pDC
   - plasma
+# encoder implementation - 0 stands for vanilla version
+encoder_impl: 0
+# fc_net implementation - 0 stands for vanilla version
+classification_head_impl: 0 

@@ -27,6 +27,6 @@ target_labels:
   - pDC
   - plasma
 # encoder implementation - 0 stands for vanilla version
-encoder_impl: 0
+encoder_impl: 1
 # fc_net implementation - 0 stands for vanilla version
 classification_head_impl: 0 
