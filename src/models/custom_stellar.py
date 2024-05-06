@@ -34,15 +34,15 @@ class CustomStellarEncoder_1(nn.Module):
         self.input_linear = nn.Sequential(
             nn.Linear(input_dim, hid_dim),
             nn.BatchNorm1d(hid_dim))
-        self.graph_conv = nn.Sequential(
-            SAGEConv(hid_dim, hid_dim),
-            nn.BatchNorm1d(hid_dim)
-            )
+        self.graph_conv = SAGEConv(hid_dim, hid_dim)
+        self.graph_conv_bn = nn.BatchNorm1d(hid_dim)
+            
 
     def forward(self, data: Data):
         x, edge_index = data.x, data.edge_index
         feat = F.relu(self.input_linear(x))
         out_feat = self.graph_conv(feat, edge_index)
+        out_feat = self.graph_conv_bn(out_feat)
         return feat, out_feat
 
 
@@ -67,21 +67,19 @@ class CustomStellarEncoder_2(nn.Module):
             nn.Linear(hid_dim, hid_dim),
             nn.BatchNorm1d(hid_dim),
             )
-        self.graph_conv1 = nn.Sequential(
-            SAGEConv(hid_dim, hid_dim),
-            nn.BatchNorm1d(hid_dim),
-            )
-        self.graph_conv2 = nn.Sequential(
-            SAGEConv(hid_dim, hid_dim),
-            nn.BatchNorm1d(hid_dim),
-            )
+        self.graph_conv1 = SAGEConv(hid_dim, hid_dim)
+        self.graph_conv1_bn = nn.BatchNorm1d(hid_dim)
+        self.graph_conv2 = SAGEConv(hid_dim, hid_dim)
+        self.graph_conv2_bn = nn.BatchNorm1d(hid_dim)
 
     def forward(self, data: Data):
         x, edge_index = data.x, data.edge_index
         feat = F.relu(self.input_linear(x))
         feat = F.relu(self.hidden_linear(feat))
         out_feat = self.graph_conv1(feat, edge_index)
+        out_feat = self.graph_conv1_bn(out_feat)
         out_feat = self.graph_conv2(out_feat, edge_index)
+        out_feat = self.graph_conv2_bn(out_feat)
         return feat, out_feat
 
 
@@ -182,7 +180,7 @@ class CustomStellarReduced(ModelBase):
             cfg.hid_dim,
             cfg.num_classes
             ).to(self.device)
-        self.optimizer = optim.Adam(self.model.parameters(), lr=cfg.lr)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
         self.label_encoder = LabelEncoder().fit(cfg.target_labels)
 
     def train(self, data: anndata.AnnData) -> None:
@@ -193,7 +191,7 @@ class CustomStellarReduced(ModelBase):
             self.cfg.hid_dim,
             self.cfg.num_classes
             ).to(self.device)
-        self.optimizer = optim.Adam(self.model.parameters(), lr=self.cfg.lr)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.cfg.lr, weight_decay=self.cfg.weight_decay)
         
         graphs = make_graph_list_from_anndata(data, self.label_encoder, self.cfg.distance_threshold)
         train_data_loader = StellarDataloader(graphs, batch_size=self.cfg.batch_size)

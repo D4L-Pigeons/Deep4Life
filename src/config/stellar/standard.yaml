@@ -6,6 +6,7 @@ batch_size: 1
 # training
 lr: 0.001
 epochs: 20
+weight_decay: 0
 # model
 hid_dim: 160
 input_dim: 40
