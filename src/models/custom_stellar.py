@@ -1,27 +1,24 @@
-from vanilla_stellar import VanillaStellarNormedLinear, VanillaStellarEncoder, VanillaStellarClassifficationHead
+from vanilla_stellar import VanillaStellarEncoder, VanillaStellarClassifficationHead
 import torch
 import torch.nn as nn
-from torch.nn import Parameter
 import torch.nn.functional as F
 from torch import Tensor
 import torch.optim as optim
 from torch_geometric.nn import SAGEConv
 from torch_geometric.data import Data, Batch
-# from torch_geometric.loader i/mport DataLoader
-# from anndata import AnnData
-from typing import Optional, Tuple, Generator
-# import numpy as np
+from torch_geometric.loader import DataLoader
+from typing import Optional
+import numpy as np
 from sklearn.preprocessing import LabelEncoder
-# import scanpy as sc
 from tqdm import tqdm
 from models.ModelBase import ModelBase
 from datasets.stellar_data import StellarDataloader, make_graph_list_from_anndata
-# from utils import calculate_entropy_logits, calculate_entropy_probs, calculate_batch_accuracy, MarginLoss
-# from itertools import cycle
-# import anndata
-# import pandas as pd
+from utils import calculate_batch_accuracy
+import anndata
+import pandas as pd
 
-class CustomStellarEncoder_0(nn.Module):
+
+class CustomStellarEncoder_1(nn.Module):
     r"""
     A graph encoder that uses a GCN layer followed by a linear layer.
 
@@ -31,7 +28,7 @@ class CustomStellarEncoder_0(nn.Module):
                  input_dim: int,
                  hid_dim: int=128
                  ):
-        super(CustomStellarEncoder_0, self).__init__()
+        super(CustomStellarEncoder_1, self).__init__()
         self.input_dim = input_dim
         self.hid_dim = hid_dim
         self.input_linear = nn.Sequential(
@@ -49,7 +46,7 @@ class CustomStellarEncoder_0(nn.Module):
         return feat, out_feat
 
 
-class CustomStellarEncoder_1(nn.Module):
+class CustomStellarEncoder_2(nn.Module):
     r"""
     A graph encoder that uses a GCN layer followed by a linear layer.
     
@@ -59,7 +56,7 @@ class CustomStellarEncoder_1(nn.Module):
                  input_dim: int,
                  hid_dim: int=128
                  ):
-        super(CustomStellarEncoder_1, self).__init__()
+        super(CustomStellarEncoder_2, self).__init__()
         self.input_dim = input_dim
         self.hid_dim = hid_dim
         self.input_linear = nn.Sequential(
@@ -87,10 +84,18 @@ class CustomStellarEncoder_1(nn.Module):
         out_feat = self.graph_conv2(out_feat, edge_index)
         return feat, out_feat
 
+
+ENCODER_IMPLEMENTATIONS = [
+    VanillaStellarEncoder,
+    CustomStellarEncoder_1,
+    CustomStellarEncoder_2
+]
+
+
 r"""
 I replace the VanillaStellarNormedLinear from the paper with the LayerNorm, which is not strictly equivalent in computations
 """
-class CustomStellarClassifficationHead_0(nn.Module):
+class CustomStellarClassifficationHead_1(nn.Module):
     r"""
     A classification head that uses a linear layer to make predictions.
 
@@ -101,7 +106,7 @@ class CustomStellarClassifficationHead_0(nn.Module):
                  num_classes: int,
                  temperature: float
                  ):
-        super(CustomStellarClassifficationHead_0, self).__init__()
+        super(CustomStellarClassifficationHead_1, self).__init__()
         self.linear = nn.Sequential(
             nn.Linear(input_dim, num_classes),
             nn.LayerNorm(num_classes)
@@ -111,6 +116,34 @@ class CustomStellarClassifficationHead_0(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         out = self.linear(x)
         return out * self.temperature
+
+class CustomStellarClassifficationHead_1(nn.Module):
+    r"""
+    A classification head that uses a linear layer to make predictions.
+
+    Replaces the VanillaStellarNormedLinear with LayerNorm
+    """
+    def __init__(self,
+                 input_dim: int,
+                 num_classes: int,
+                 temperature: float
+                 ):
+        super(CustomStellarClassifficationHead_1, self).__init__()
+        self.linear = nn.Sequential(
+            nn.Linear(input_dim, num_classes),
+            nn.LayerNorm(num_classes)
+        )
+        self.temperature = temperature
+
+    def forward(self, x: Tensor) -> Tensor:
+        out = self.linear(x)
+        return out * self.temperature
+
+
+CLASSIFICATION_HEAD_IMPLEMENTATIONS = [
+    VanillaStellarClassifficationHead,
+    CustomStellarClassifficationHead_1
+]
 
 
 class CustomStellarModel(nn.Module):
@@ -136,3 +169,96 @@ class CustomStellarModel(nn.Module):
         assert type(out_feat) == Tensor, f"Expected Tensor, got {type(out_feat)}"
         out = self.fc_net(out_feat)
         return out, out_feat
+    
+
+class CustomStellarReduced(ModelBase):
+    def __init__(self, cfg):
+        self.cfg = cfg
+        self.device = torch.device(cfg.device)
+        self.model = CustomStellarModel(
+            ENCODER_IMPLEMENTATIONS[cfg.encoder_implementation],
+            CLASSIFICATION_HEAD_IMPLEMENTATIONS[cfg.classification_head_impl],
+            cfg.input_dim,
+            cfg.hid_dim,
+            cfg.num_classes
+            ).to(self.device)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=cfg.lr)
+        self.label_encoder = LabelEncoder().fit(cfg.target_labels)
+
+    def train(self, data: anndata.AnnData) -> None:
+        self.model = CustomStellarModel(
+            ENCODER_IMPLEMENTATIONS[self.cfg.encoder_implementation],
+            CLASSIFICATION_HEAD_IMPLEMENTATIONS[self.cfg.classification_head_impl],
+            self.cfg.input_dim,
+            self.cfg.hid_dim,
+            self.cfg.num_classes
+            ).to(self.device)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.cfg.lr)
+        
+        graphs = make_graph_list_from_anndata(data, self.label_encoder, self.cfg.distance_threshold)
+        train_data_loader = StellarDataloader(graphs, batch_size=self.cfg.batch_size)
+        
+        self._train(train_data_loader, self.cfg.epochs)
+
+    def predict(self, data: anndata.AnnData) -> np.ndarray:
+        graphs = make_graph_list_from_anndata(data, self.label_encoder, self.cfg.distance_threshold)
+        batched_graphs =  Batch.from_data_list(graphs)
+        cell_ids = np.concatenate(batched_graphs.cell_ids)
+        
+        self.model.eval()
+        with torch.no_grad():
+            logits, _ = self.model(batched_graphs)
+        preds = logits.argmax(dim=1).detach().numpy()
+        pred_labels = data.obs["cell_labels"].cat.categories[preds]
+        
+        return pd.Series(data=pred_labels, index=cell_ids).reindex(data.obs.index).to_numpy()
+
+    def save(self, file_path: str) -> None:
+        raise NotImplementedError()
+
+    def load(self, file_path: str) -> None:
+        raise NotImplementedError()
+
+    def _train(
+            self,
+            train_loader: DataLoader,
+            epochs: int,
+            valid_loader: DataLoader | None = None,
+            return_valid_acc: bool = False
+            ) -> Optional[float]:
+        r"""
+        Trains the model in a supervised manner.
+        """
+        cross_entropy_loss_fn = nn.CrossEntropyLoss()
+        for epoch in range(epochs):
+            sum_loss = 0.0
+            acc_sum = 0.0
+            self.model.train()
+            train_progress_bar = tqdm(train_loader, desc=f"Training - epoch {epoch}", leave=True)
+            for batch_number, batch in enumerate(train_progress_bar):
+                batch = batch.to(self.device)
+                self.optimizer.zero_grad()
+                output, _ = self.model(batch)
+                loss = cross_entropy_loss_fn(output, batch.y)
+                sum_loss += loss.item()
+                acc_sum += calculate_batch_accuracy(output, batch.y)
+                loss.backward()
+                self.optimizer.step()
+                train_progress_bar.set_postfix({"Loss": sum_loss / (batch_number + 1), "Accuracy": acc_sum / (batch_number + 1)})
+            
+            if valid_loader != None:
+                val_loss_sum = 0
+                val_acc_sum = 0
+                self.model.eval()
+                val_progress_bar = tqdm(valid_loader, desc=f"Validation - epoch {epoch}", leave=True)
+                for batch_number, batch in enumerate(val_progress_bar):
+                    batch = batch.to(self.device)
+                    with torch.no_grad():
+                        output, _ = self.model(batch)
+                    loss = F.cross_entropy(output, batch.y)
+                    val_loss_sum += loss.item()
+                    val_acc_sum += calculate_batch_accuracy(output, batch.y)
+                    val_progress_bar.set_postfix({"Loss": val_loss_sum / (batch_number + 1), "Accuracy": val_acc_sum / (batch_number + 1)})
+        
+        if return_valid_acc:
+            return val_acc_sum / (batch_number + 1)
