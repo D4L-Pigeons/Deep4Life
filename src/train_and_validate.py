@@ -1,7 +1,8 @@
 import torch
 import anndata
 from sklearn.model_selection import KFold
-from datasets.load_d4ls import load_full_anndata
+# from datasets.load_d4ls import load_full_anndata
+from datasets.data_utils import load_full_anndata
 from models.ModelBase import ModelBase
 from models.xgboost import XGBoostModel
 import argparse
@@ -26,13 +27,14 @@ def main():
     parser.add_argument("--config", default="standard", help="Name of a configuration in src/config/{method} directory.")
     parser.add_argument("--cv-seed", default=42, help="Seed used to make k folds for cross validation.")
     parser.add_argument("--n-folds", default=5, help="Number of folds in cross validation.")
+    parser.add_argument("--test", action="store_true", help="Test mode.")
     
     args = parser.parse_args()
     
     config = load_config(args)
     model = create_model(args, config)
     
-    data = load_full_anndata()
+    data = load_full_anndata(test=args.test)
 
     accuracy = cross_validation(data, model, random_state=args.cv_seed, n_folds=args.n_folds)
     
