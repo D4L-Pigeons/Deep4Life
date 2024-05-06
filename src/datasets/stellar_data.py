@@ -47,7 +47,6 @@ def _get_edges(
     
 def make_graph_list_from_anndata(
         anndata: anndata.AnnData,
-        label_encoder: LabelEncoder,
         distance_threshold: float,
         obs_feature_names: List[str] = [],
         ) -> List[Data]:
@@ -55,7 +54,7 @@ def make_graph_list_from_anndata(
     Make a list of graphs from the dataset.
     """
     
-    targets = label_encoder.transform(anndata.obs["cell_labels"].values).astype(np.int32)
+    targets = anndata.obs["cell_labels"].cat.codes.values
 
     graphs: List[Data] = []
     for sample_id in anndata.obs["sample_id"].unique():

@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 import torch.optim as optim
-from torch_geometric.nn import SAGEConv
+from torch_geometric.nn import GCNConv, ChebConv, SAGEConv, CuGraphSAGEConv, GraphConv, GravNetConv, GatedGraphConv, ResGatedGraphConv, GATConv, CuGraphGATConv, FusedGATConv, GATv2Conv, TransformerConv, AGNNConv, TAGConv, GINConv, GINEConv, ARMAConv, SGConv, SSGConv, APPNP, MFConv, RGCNConv, FastRGCNConv, CuGraphRGCNConv, RGATConv, SignedConv, DNAConv, PointNetConv, GMMConv, SplineConv, NNConv, CGConv, EdgeConv, DynamicEdgeConv, XConv, PPFConv, FeaStConv, PointTransformerConv, HypergraphConv, LEConv, PNAConv, ClusterGCNConv, GENConv, GCN2Conv, PANConv, WLConv, WLConvContinuous, FiLMConv, SuperGATConv, FAConv, EGConv, PDNConv, GeneralConv, HGTConv, HEATConv, HeteroConv, HANConv, LGConv, PointGNNConv, GPSConv, AntiSymmetricConv, DirGNNConv, MixHopConv
 from torch_geometric.data import Data, Batch
 from torch_geometric.loader import DataLoader
 from typing import Optional
@@ -18,7 +18,7 @@ import anndata
 import pandas as pd
 
 
-class CustomStellarEncoder_1(nn.Module):
+class CustomStellarEncoder(nn.Module):
     r"""
     A graph encoder that uses a GCN layer followed by a linear layer.
 
@@ -26,16 +26,22 @@ class CustomStellarEncoder_1(nn.Module):
     """
     def __init__(self,
                  input_dim: int,
-                 hid_dim: int=128
+                 hid_dim: int,
+                 graph_conv_constructor: nn.Module=SAGEConv,
+                 n_graph_layers: int=2,
+                 batch_norm: bool=False,
                  ):
-        super(CustomStellarEncoder_1, self).__init__()
+        super(CustomStellarEncoder, self).__init__()
         self.input_dim = input_dim
         self.hid_dim = hid_dim
         self.input_linear = nn.Sequential(
             nn.Linear(input_dim, hid_dim),
             nn.BatchNorm1d(hid_dim))
-        self.graph_conv = SAGEConv(hid_dim, hid_dim)
-        self.graph_conv_bn = nn.BatchNorm1d(hid_dim)
+        self.graph_convs = nn.ModuleList()
+        for _ in range(n_graph_layers):
+            self.graph_convs.append(graph_conv_constructor(hid_dim, hid_dim))
+            if batch_norm:
+                self.graph_convs.append(nn.BatchNorm1d(hid_dim))
             
 
     def forward(self, data: Data):
@@ -46,54 +52,83 @@ class CustomStellarEncoder_1(nn.Module):
         return feat, out_feat
 
 
-class CustomStellarEncoder_2(nn.Module):
-    r"""
-    A graph encoder that uses a GCN layer followed by a linear layer.
-    
-    Doubles each layer of the CustomStellalrEncoder_0
-    """
-    def __init__(self,
-                 input_dim: int,
-                 hid_dim: int=128
-                 ):
-        super(CustomStellarEncoder_2, self).__init__()
-        self.input_dim = input_dim
-        self.hid_dim = hid_dim
-        self.input_linear = nn.Sequential(
-            nn.Linear(input_dim, hid_dim),
-            nn.BatchNorm1d(hid_dim),
-            )
-        self.hidden_linear = nn.Sequential(
-            nn.Linear(hid_dim, hid_dim),
-            nn.BatchNorm1d(hid_dim),
-            )
-        self.graph_conv1 = SAGEConv(hid_dim, hid_dim)
-        self.graph_conv1_bn = nn.BatchNorm1d(hid_dim)
-        self.graph_conv2 = SAGEConv(hid_dim, hid_dim)
-        self.graph_conv2_bn = nn.BatchNorm1d(hid_dim)
-
-    def forward(self, data: Data):
-        x, edge_index = data.x, data.edge_index
-        feat = F.relu(self.input_linear(x))
-        feat = F.relu(self.hidden_linear(feat))
-        out_feat = self.graph_conv1(feat, edge_index)
-        out_feat = self.graph_conv1_bn(out_feat)
-        out_feat = self.graph_conv2(out_feat, edge_index)
-        out_feat = self.graph_conv2_bn(out_feat)
-        return feat, out_feat
-
-
 ENCODER_IMPLEMENTATIONS = [
     VanillaStellarEncoder,
-    CustomStellarEncoder_1,
-    CustomStellarEncoder_2
+    CustomStellarEncoder,
+]
+
+GRAPH_CONV_IMPLEMENTATIONS = layer_classes = [
+    GCNConv,
+    ChebConv,
+    SAGEConv,
+    CuGraphSAGEConv,
+    GraphConv,
+    GravNetConv,
+    GatedGraphConv,
+    ResGatedGraphConv,
+    GATConv,
+    CuGraphGATConv,
+    FusedGATConv,
+    GATv2Conv,
+    TransformerConv,
+    AGNNConv,
+    TAGConv,
+    GINConv,
+    GINEConv,
+    ARMAConv,
+    SGConv,
+    SSGConv,
+    APPNP,
+    MFConv,
+    RGCNConv,
+    FastRGCNConv,
+    CuGraphRGCNConv,
+    RGATConv,
+    SignedConv,
+    DNAConv,
+    PointNetConv,
+    GMMConv,
+    SplineConv,
+    NNConv,
+    CGConv,
+    EdgeConv,
+    DynamicEdgeConv,
+    XConv,
+    PPFConv,
+    FeaStConv,
+    PointTransformerConv,
+    HypergraphConv,
+    LEConv,
+    PNAConv,
+    ClusterGCNConv,
+    GENConv,
+    GCN2Conv,
+    PANConv,
+    WLConv,
+    WLConvContinuous,
+    FiLMConv,
+    SuperGATConv,
+    FAConv,
+    EGConv,
+    PDNConv,
+    GeneralConv,
+    HGTConv,
+    HEATConv,
+    HeteroConv,
+    HANConv,
+    LGConv,
+    PointGNNConv,
+    GPSConv,
+    AntiSymmetricConv,
+    DirGNNConv,
+    MixHopConv
 ]
 
 
 r"""
 I replace the VanillaStellarNormedLinear from the paper with the LayerNorm, which is not strictly equivalent in computations
 """
-class CustomStellarClassifficationHead_1(nn.Module):
+class CustomStellarClassifficationHead(nn.Module):
     r"""
     A classification head that uses a linear layer to make predictions.
 
@@ -104,29 +139,7 @@ class CustomStellarClassifficationHead_1(nn.Module):
                  num_classes: int,
                  temperature: float
                  ):
-        super(CustomStellarClassifficationHead_1, self).__init__()
-        self.linear = nn.Sequential(
-            nn.Linear(input_dim, num_classes),
-            nn.LayerNorm(num_classes)
-        )
-        self.temperature = temperature
-
-    def forward(self, x: Tensor) -> Tensor:
-        out = self.linear(x)
-        return out * self.temperature
-
-class CustomStellarClassifficationHead_1(nn.Module):
-    r"""
-    A classification head that uses a linear layer to make predictions.
-
-    Replaces the VanillaStellarNormedLinear with LayerNorm
-    """
-    def __init__(self,
-                 input_dim: int,
-                 num_classes: int,
-                 temperature: float
-                 ):
-        super(CustomStellarClassifficationHead_1, self).__init__()
+        super(CustomStellarClassifficationHead, self).__init__()
         self.linear = nn.Sequential(
             nn.Linear(input_dim, num_classes),
             nn.LayerNorm(num_classes)
@@ -140,7 +153,7 @@ class CustomStellarClassifficationHead_1(nn.Module):
 
 CLASSIFICATION_HEAD_IMPLEMENTATIONS = [
     VanillaStellarClassifficationHead,
-    CustomStellarClassifficationHead_1
+    CustomStellarClassifficationHead
 ]
 
 
@@ -181,7 +194,6 @@ class CustomStellarReduced(ModelBase):
             cfg.num_classes
             ).to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
-        self.label_encoder = LabelEncoder().fit(cfg.target_labels)
 
     def train(self, data: anndata.AnnData) -> None:
         self.model = CustomStellarModel(
@@ -193,13 +205,13 @@ class CustomStellarReduced(ModelBase):
             ).to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.cfg.lr, weight_decay=self.cfg.weight_decay)
         
-        graphs = make_graph_list_from_anndata(data, self.label_encoder, self.cfg.distance_threshold)
+        graphs = make_graph_list_from_anndata(data, self.cfg.distance_threshold)
         train_data_loader = StellarDataloader(graphs, batch_size=self.cfg.batch_size)
         
         self._train(train_data_loader, self.cfg.epochs)
 
     def predict(self, data: anndata.AnnData) -> np.ndarray:
-        graphs = make_graph_list_from_anndata(data, self.label_encoder, self.cfg.distance_threshold)
+        graphs = make_graph_list_from_anndata(data, self.cfg.distance_threshold)
         batched_graphs =  Batch.from_data_list(graphs)
         cell_ids = np.concatenate(batched_graphs.cell_ids)
         
