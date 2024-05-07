@@ -1,15 +1,17 @@
+import copy
+from itertools import cycle
+
+import numpy as np
+import scanpy as sc
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import models
-from utils import entropy, MarginLoss
-import numpy as np
-from itertools import cycle
-import copy
-from torch_geometric.data import ClusterData, ClusterLoader
-import scanpy as sc
 from anndata import AnnData
+from torch_geometric.data import ClusterData, ClusterLoader
+
+import models
+from utils import MarginLoss, entropy
 
 
 class STELLAR:

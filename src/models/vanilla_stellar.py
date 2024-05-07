@@ -1,11 +1,21 @@
+import copy
+from itertools import cycle
+from typing import Generator, Optional, Tuple
+
+import anndata
+import numpy as np
+import pandas as pd
+import scanpy as sc
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from anndata import AnnData
+from torch import Tensor
 from torch.nn import Parameter
-from torch_geometric.nn import SAGEConv
-from torch_geometric.data import Data, Batch
+from torch_geometric.data import Batch, Data
 from torch_geometric.loader import DataLoader
+from torch_geometric.nn import SAGEConv
 from torch import Tensor
 from anndata import AnnData
 from typing import Optional, Tuple, Generator
@@ -13,9 +23,13 @@ import numpy as np
 from sklearn.preprocessing import LabelEncoder
 import scanpy as sc
 from tqdm import tqdm
+
+from datasets.stellar_data import (StellarDataloader,
+                                   make_graph_list_from_anndata)
 from models.ModelBase import ModelBase
+from utils import (MarginLoss, calculate_batch_accuracy,
+                   calculate_entropy_logits, calculate_entropy_probs)
 from datasets.stellar_data import StellarDataloader, make_graph_list_from_anndata
-from utils import calculate_entropy_logits, calculate_entropy_probs, calculate_batch_accuracy, MarginLoss
 from itertools import cycle
 import anndata
 import pandas as pd
@@ -351,7 +365,7 @@ class VanillaStellarReduced(ModelBase):
         
         return pd.Series(data=pred_labels, index=cell_ids).reindex(data.obs.index).to_numpy()
 
-    def save(self, file_path: str) -> None:
+    def save(self, file_path: str) -> str:
         raise NotImplementedError()
 
     def load(self, file_path: str) -> None:
