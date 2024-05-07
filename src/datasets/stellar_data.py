@@ -7,6 +7,7 @@ from torch_geometric.data import Data
 import torch_geometric.loader
 from sklearn.preprocessing import LabelEncoder
 import anndata
+from typing import Union
 
 
 def _get_distances(pos: np.ndarray) -> np.ndarray:
@@ -22,7 +23,6 @@ def get_all_distances():
     """
     anndata = data_utils.load_full_anndata(test=False)
     all_distances = np.array([])
-
     for sample_id in anndata.obs["sample_id"].unique():
         sample_cell_indices = (anndata.obs["sample_id"] == sample_id).values
         sample_pos = anndata.obs[sample_cell_indices][["Pos_X", "Pos_Y"]].values.astype(np.float32)
@@ -87,12 +87,12 @@ class StellarDataloader(torch_geometric.loader.DataLoader):
     r"""
     DataLoader for the StellarGraph dataset
     """
-    def __init__(self, graphs: list[Data], batch_size: int, shuffle: bool = True, graphs_idx: List[int] | None = None):
+    def __init__(self, graphs: list[Data], batch_size: int, shuffle: bool = True, graphs_idx: Union[List[int], None] = None):
         graphs = [graph for idx, graph in enumerate(graphs) if graphs_idx == None or idx in graphs_idx]
         super().__init__(graphs, batch_size=batch_size, shuffle=shuffle)
        
     @classmethod 
-    def from_file(cls, filename: str, test: bool, batch_size: int, shuffle: bool = True, graphs_idx: List[int] | None = None):
+    def from_file(cls, filename: str, test: bool, batch_size: int, shuffle: bool = True, graphs_idx: Union[List[int], None] = None):
         data_path = data_utils.TEST_DATA_PATH if test else data_utils.TRAIN_DATA_PATH
         file_path = data_path / filename
         assert file_path.exists(), f"File {filename} does not exist in {data_path}"

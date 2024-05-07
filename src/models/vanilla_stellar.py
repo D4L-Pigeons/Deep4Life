@@ -19,6 +19,8 @@ from utils import calculate_entropy_logits, calculate_entropy_probs, calculate_b
 from itertools import cycle
 import anndata
 import pandas as pd
+from typing import Union
+
 
 class VanillaStellarNormedLinear(nn.Module):
     r"""
@@ -359,7 +361,7 @@ class VanillaStellarReduced(ModelBase):
             self,
             train_loader: DataLoader,
             epochs: int,
-            valid_loader: DataLoader | None = None,
+            valid_loader: Union[DataLoader, None] = None,
             return_valid_acc: bool = False
             ) -> Optional[float]:
         r"""
