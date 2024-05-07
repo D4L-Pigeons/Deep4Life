@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from datasets import load_d4ls
+from datasets import data_utils
 from pathlib import Path
 from typing import List
 from torch_geometric.data import Data
@@ -20,10 +20,9 @@ def get_all_distances():
     r"""
     Get all distances between cells in the dataset. This is useful for setting the distance threshold for the graph construction.
     """
-    anndata = data_utils.load_full_anndata()
+    anndata = data_utils.load_full_anndata(test=False)
     all_distances = np.array([])
 
-    # GROUPING BY INDICATION MAY BE A GOOD IDEA FOR TESTING TRANSFER LEARNING
     for sample_id in anndata.obs["sample_id"].unique():
         sample_cell_indices = (anndata.obs["sample_id"] == sample_id).values
         sample_pos = anndata.obs[sample_cell_indices][["Pos_X", "Pos_Y"]].values.astype(np.float32)
@@ -57,7 +56,6 @@ def make_graph_list_from_anndata(
     targets = anndata.obs["cell_labels"].cat.codes.to_numpy()
     
     graphs = []
-    # GROUPING BY INDICATION MAY BE A GOOD IDEA FOR TESTING TRANSFER LEARNING
     for sample_id in anndata.obs["sample_id"].unique():
         sample_cell_indices = (anndata.obs["sample_id"] == sample_id).values
         sample_cell_ids = np.array(anndata.obs[sample_cell_indices].index)
@@ -97,11 +95,10 @@ def make_graph_list(
     file_path = data_path / save_filename
     assert file_path.exists() == False, f"File {save_filename} already exists"
     
-    anndata = data_utils.load_full_anndata()
+    anndata = data_utils.load_full_anndata(test=test)
     le = LabelEncoder()
     targets = le.fit_transform(anndata.obs["cell_labels"].values)
     graphs = []
-    # GROUPING BY INDICATION MAY BE A GOOD IDEA FOR TESTING TRANSFER LEARNING
     for sample_id in anndata.obs["sample_id"].unique():
         sample_cell_indices = (anndata.obs["sample_id"] == sample_id).values
         sample_cell_ids = np.array(anndata.obs[sample_cell_indices].index).reshape(-1)
@@ -137,7 +134,7 @@ class StellarDataloader(torch_geometric.loader.DataLoader):
        
     @classmethod 
     def from_file(cls, filename, test: bool, batch_size: int, shuffle: bool = True, graphs_idx: List[int] | None = None):
-        data_path = load_d4ls.TEST_DATA_PATH if test else load_d4ls.TRAIN_DATA_PATH
+        data_path = data_utils.TEST_DATA_PATH if test else data_utils.TRAIN_DATA_PATH
         file_path = data_path / filename
         assert file_path.exists(), f"File {filename} does not exist in {data_path}"
         graphs = torch.load(file_path)

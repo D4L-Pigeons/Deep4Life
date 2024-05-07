@@ -27,14 +27,17 @@ TEST_IMAGE_DATA_IMAGES: Path = TEST_IMAGE_DATA_DIR / TEST_ORIGINAL_IMAGES_SUBDIR
 TEST_IMAGE_DATA_MASKS: Path = TEST_IMAGE_DATA_DIR / TEST_ORIGINAL_MASKS_SUBDIR
 
 
-def load_full_anndata() -> anndata.AnnData:
+
+def load_full_anndata(test: bool = False) -> anndata.AnnData:
     r"""
     Load the full anndata object from the Deep4Life dataset.
 
     Output:
     - anndata.AnnData: The full anndata object.
     """
-    
-    train_anndata = anndata.read_h5ad(TRAIN_ANNDATA_PATH)
+    if test:
+        data = anndata.read_h5ad(TEST_ANNDATA_PATH)
+    else:
+        data = anndata.read_h5ad(TRAIN_ANNDATA_PATH)
 
-    return train_anndata
+    return data
