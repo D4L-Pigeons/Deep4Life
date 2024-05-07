@@ -1,13 +1,9 @@
-<<<<<<< HEAD
 import torch
 import anndata
 from sklearn.model_selection import KFold
-# from datasets.load_d4ls import load_full_anndata
 from datasets.data_utils import load_full_anndata
 from models.ModelBase import ModelBase
 from models.xgboost import XGBoostModel
-=======
->>>>>>> 1a06469ddc8ac5d1eb1384c1fc8bce2d479364a6
 import argparse
 import datetime
 import os
@@ -21,13 +17,8 @@ from models.vanilla_stellar import VanillaStellarReduced
 from models.custom_stellar import CustomStellarReduced
 import yaml
 from sklearn.model_selection import KFold
-
-from datasets.load_d4ls import load_full_anndata
-from models.ModelBase import ModelBase
 from models.sklearn_mlp import SklearnMLP
 from models.torch_mlp import TorchMLP
-from models.vanilla_stellar import VanillaStellarReduced
-from models.xgboost import XGBoostModel
 
 CONFIG_PATH: Path = Path(__file__).parent / "config"
 RESULTS_PATH: Path = Path(__file__).parent.parent / "results"
@@ -43,12 +34,10 @@ def main():
     parser.add_argument("--config", default="standard", help="Name of a configuration in src/config/{method} directory.")
     parser.add_argument("--cv-seed", default=42, help="Seed used to make k folds for cross validation.")
     parser.add_argument("--n-folds", default=5, help="Number of folds in cross validation.")
-<<<<<<< HEAD
     parser.add_argument("--test", action="store_true", help="Test mode.")
-=======
     parser.add_argument("--retrain", default=True, help="Retrain a model using the whole dataset.")
->>>>>>> 1a06469ddc8ac5d1eb1384c1fc8bce2d479364a6
-    
+    parser.add_argument
+
     args = parser.parse_args()
     
     config = load_config(args)
