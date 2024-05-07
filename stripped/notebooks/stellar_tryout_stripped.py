@@ -5,7 +5,8 @@
 
 
 import os
-os.chdir('..')
+
+os.chdir("..")
 
 
 # In[47]:
@@ -64,8 +65,12 @@ train_idx = np.where(~test_mask)[0]
 # In[38]:
 
 
-train_data_loader = StellarDataloader("graphs.pt", test=False, batch_size=1, shuffle=True, graphs_idx=train_idx)
-test_data_loader = StellarDataloader("graphs.pt", test=False, batch_size=1, shuffle=False, graphs_idx=test_idx)
+train_data_loader = StellarDataloader(
+    "graphs.pt", test=False, batch_size=1, shuffle=True, graphs_idx=train_idx
+)
+test_data_loader = StellarDataloader(
+    "graphs.pt", test=False, batch_size=1, shuffle=False, graphs_idx=test_idx
+)
 
 
 # In[33]:
@@ -75,9 +80,10 @@ class ModelConfig:
     def __init__(self):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.input_dim = 40
-        self.hid_dim = 40*4 
+        self.hid_dim = 40 * 4
         self.num_classes = 14
         self.lr = 0.001
+
 
 # Example usage:
 config = ModelConfig()
@@ -94,4 +100,3 @@ stellar = VanillaStellarReduced(config)
 
 
 stellar.train(train_data_loader, test_data_loader, epochs=10, return_valid_acc=True)
-
