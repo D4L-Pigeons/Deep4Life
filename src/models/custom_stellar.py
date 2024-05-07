@@ -17,6 +17,7 @@ from datasets.stellar_data import StellarDataloader, make_graph_list_from_anndat
 from utils import calculate_batch_accuracy
 import anndata
 import pandas as pd
+from typing import Union
 
 
 class CustomStellarEncoder(nn.Module):
@@ -261,7 +262,7 @@ class CustomStellarReduced(ModelBase):
             self,
             train_loader: DataLoader,
             epochs: int,
-            valid_loader: DataLoader | None = None,
+            valid_loader: Union[DataLoader, None] = None,
             return_valid_acc: bool = False
             ) -> Optional[float]:
         r"""

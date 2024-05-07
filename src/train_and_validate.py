@@ -49,8 +49,10 @@ def load_config(args):
 
 def create_model(args, config) -> ModelBase:
     if args.method == "stellar":
-        # return VanillaStellarReduced(config)
-        return CustomStellarReduced(config)
+        if args.config == "standard":
+            return VanillaStellarReduced(config)
+        else:
+            return CustomStellarReduced(config)
     elif args.method == "torch_mlp":
         return TorchMLP(config)
     elif args.method == "sklearn_mlp":
