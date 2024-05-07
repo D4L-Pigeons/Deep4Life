@@ -72,8 +72,8 @@ def main():
     if args.retrain:
         print("Retraining model...")
         model.train(data)
-        model.save(str(results_path / "saved_model"))
-        print(f"Model saved to: {results_path / 'saved_model'}")
+        saved_model_path = model.save(str(results_path / "saved_model"))
+        print(f"Model saved to: {saved_model_path}")
 
 
 def load_config(args) -> argparse.Namespace:

@@ -35,8 +35,9 @@ class SklearnMLP(ModelBase):
         
         return prediction_probabilities
     
-    def save(self, file_path: str) -> None:
-        dump(self.mlp_classifier, file_path) 
+    def save(self, file_path: str) -> str:
+        dump(self.mlp_classifier, file_path + ".joblib")
+        return file_path + ".joblib"
 
     def load(self, file_path: str) -> None:
         self.mlp_classifier = load(file_path) 

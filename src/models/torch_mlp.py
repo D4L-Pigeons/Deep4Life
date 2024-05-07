@@ -57,8 +57,9 @@ class TorchMLP(ModelBase):
         
         return prediction_probabilities
 
-    def save(self, file_path: str) -> None:
-        torch.save(self.mlp.state_dict(), file_path)
+    def save(self, file_path: str) -> str:
+        torch.save(self.mlp.state_dict(), file_path + '.pt')
+        return file_path + '.pt'
 
     def load(self, file_path: str) -> None:
         self.mlp.load_state_dict(torch.load(file_path))

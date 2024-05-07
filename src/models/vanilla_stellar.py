@@ -353,7 +353,7 @@ class VanillaStellarReduced(ModelBase):
         
         return pd.Series(data=pred_labels, index=cell_ids).reindex(data.obs.index).to_numpy()
 
-    def save(self, file_path: str) -> None:
+    def save(self, file_path: str) -> str:
         raise NotImplementedError()
 
     def load(self, file_path: str) -> None:
