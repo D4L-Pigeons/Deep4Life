@@ -16,6 +16,12 @@ from torch.nn import Parameter
 from torch_geometric.data import Batch, Data
 from torch_geometric.loader import DataLoader
 from torch_geometric.nn import SAGEConv
+from torch import Tensor
+from anndata import AnnData
+from typing import Optional, Tuple, Generator
+import numpy as np
+from sklearn.preprocessing import LabelEncoder
+import scanpy as sc
 from tqdm import tqdm
 
 from datasets.stellar_data import (StellarDataloader,
@@ -330,18 +336,19 @@ class VanillaStellarReduced(ModelBase):
         self.device = torch.device(cfg.device)
         self.model = VanillaStellarModel(cfg.input_dim, cfg.hid_dim, cfg.num_classes).to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=cfg.lr)
+        self.label_encoder = LabelEncoder().fit(cfg.target_labels)
 
     def train(self, data: anndata.AnnData) -> None:
         self.model = VanillaStellarModel(self.cfg.input_dim, self.cfg.hid_dim, self.cfg.num_classes).to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.cfg.lr)
         
-        graphs = make_graph_list_from_anndata(data, self.cfg.distance_threshold)
+        graphs = make_graph_list_from_anndata(data, self.label_encoder, self.cfg.distance_threshold)
         train_data_loader = StellarDataloader(graphs, batch_size=self.cfg.batch_size)
         
         self._train(train_data_loader, self.cfg.epochs)
 
     def predict(self, data: anndata.AnnData) -> np.ndarray:
-        graphs = make_graph_list_from_anndata(data, self.cfg.distance_threshold)
+        graphs = make_graph_list_from_anndata(data, self.label_encoder, self.cfg.distance_threshold)
         batched_graphs =  Batch.from_data_list(graphs)
         cell_ids = np.concatenate(batched_graphs.cell_ids)
         

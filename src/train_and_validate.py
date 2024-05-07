@@ -2,12 +2,13 @@ import argparse
 import datetime
 import os
 from pathlib import Path
-
 import anndata
 import pandas as pd
 import sklearn
 import sklearn.metrics
 import torch
+from models.vanilla_stellar import VanillaStellarReduced
+from models.custom_stellar import CustomStellarReduced
 import yaml
 from sklearn.model_selection import KFold
 
@@ -84,7 +85,8 @@ def load_config(args) -> argparse.Namespace:
 
 def create_model(args, config) -> ModelBase:
     if args.method == "stellar":
-        return VanillaStellarReduced(config)
+        # return VanillaStellarReduced(config)
+        return CustomStellarReduced(config)
     elif args.method == "torch_mlp":
         return TorchMLP(config)
     elif args.method == "sklearn_mlp":
