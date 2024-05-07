@@ -36,7 +36,6 @@ def main():
     parser.add_argument("--n-folds", default=5, help="Number of folds in cross validation.")
     parser.add_argument("--test", action="store_true", help="Test mode.")
     parser.add_argument("--retrain", default=True, help="Retrain a model using the whole dataset.")
-    parser.add_argument
 
     args = parser.parse_args()
     
@@ -69,7 +68,7 @@ def main():
         print(f"Config saved to: {results_path / 'config.yaml'}")
     
     # Save metrics
-    cross_validation_metrics.to_json(results_path / "metrics.json")
+    cross_validation_metrics.to_json(results_path / "metrics.json", indent=4)
     print(f"Metrics saved to: {results_path / 'metrics.json'}")
     
     # Retrain and save model

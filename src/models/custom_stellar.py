@@ -198,10 +198,12 @@ class CustomStellarReduced(ModelBase):
         return probs
 
     def save(self, file_path: str) -> None:
-        torch.save(self.model.state_dict(), file_path)
+        save_path = file_path + ".pth"
+        torch.save(self.model.state_dict(), save_path)
+        return save_path
 
     def load(self, file_path: str) -> None:
-        self.model.load_state_dict(torch.load(file_path))
+        self.model.load_state_dict(torch.load(file_path + ".pth"))
 
     def _train_graph_batch(
             self,
@@ -266,7 +268,7 @@ class CustomStellarReduced(ModelBase):
             self.model.train()
             train_progress_bar = tqdm(train_loader, desc=f"Training - epoch {epoch}", leave=True)
             for batch_number, batch in enumerate(train_progress_bar):
-                num_parts = len(batch.y) // self.cfg.node_batch_size
+                num_parts = len(batch.y) // self.cfg.node_batch_size + 1
                 rnl = RandomNodeLoader(batch, num_parts=num_parts)
                 for part in rnl:
                     n += 1

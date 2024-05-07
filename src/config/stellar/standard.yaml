@@ -5,7 +5,7 @@ distance_threshold: 14.28
 batch_size: 1
 # training
 lr: 0.001
-epochs: 10 #20
+epochs: 20
 # model
 input_dim: 40
 hid_dim: 160

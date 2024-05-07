@@ -360,11 +360,23 @@ class VanillaStellarReduced(ModelBase):
         
         return pd.Series(data=pred_labels, index=cell_ids).reindex(data.obs.index).to_numpy()
 
+    def predict_proba(self, data: anndata.AnnData) -> np.ndarray:
+        graphs = make_graph_list_from_anndata(data, self.cfg.distance_threshold)
+        batched_graphs =  Batch.from_data_list(graphs)
+        
+        self.model.eval()
+        with torch.no_grad():
+            logits, _ = self.model(batched_graphs)
+        probs = F.softmax(logits, dim=1).detach().numpy()
+        return probs
+
     def save(self, file_path: str) -> None:
-        torch.save(self.model.state_dict(), file_path)
+        save_path = file_path + ".pth"
+        torch.save(self.model.state_dict(), save_path)
+        return save_path
 
     def load(self, file_path: str) -> None:
-        self.model.load_state_dict(torch.load(file_path))
+        self.model.load_state_dict(torch.load(file_path + ".pth"))
 
     def _train(
             self,
