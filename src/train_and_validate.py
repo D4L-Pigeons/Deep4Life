@@ -1,19 +1,26 @@
-import torch
-import anndata
-from sklearn.model_selection import KFold
-from datasets.load_d4ls import load_full_anndata
-from models.ModelBase import ModelBase
-from models.xgboost import XGBoostModel
 import argparse
+import datetime
+import os
 from pathlib import Path
+import anndata
+import pandas as pd
+import sklearn
+import sklearn.metrics
+import torch
 from models.vanilla_stellar import VanillaStellarReduced
 from models.custom_stellar import CustomStellarReduced
 import yaml
+from sklearn.model_selection import KFold
 
-from models.torch_mlp import TorchMLP
+from datasets.load_d4ls import load_full_anndata
+from models.ModelBase import ModelBase
 from models.sklearn_mlp import SklearnMLP
+from models.torch_mlp import TorchMLP
+from models.vanilla_stellar import VanillaStellarReduced
+from models.xgboost import XGBoostModel
 
 CONFIG_PATH: Path = Path(__file__).parent / "config"
+RESULTS_PATH: Path = Path(__file__).parent.parent / "results"
 
 def main():
     parser = argparse.ArgumentParser(description="Validate model")
@@ -26,6 +33,7 @@ def main():
     parser.add_argument("--config", default="standard", help="Name of a configuration in src/config/{method} directory.")
     parser.add_argument("--cv-seed", default=42, help="Seed used to make k folds for cross validation.")
     parser.add_argument("--n-folds", default=5, help="Number of folds in cross validation.")
+    parser.add_argument("--retrain", default=True, help="Retrain a model using the whole dataset.")
     
     args = parser.parse_args()
     
@@ -34,12 +42,42 @@ def main():
     
     data = load_full_anndata()
 
-    accuracy = cross_validation(data, model, random_state=args.cv_seed, n_folds=args.n_folds)
+    cross_validation_metrics = cross_validation(data, model, random_state=args.cv_seed, n_folds=args.n_folds)
     
-    print(accuracy)
+    # Save results
+    current_time = datetime.datetime.now()
+    formatted_time = current_time.strftime("%Y-%m-%d_%H-%M-%S")
+    
+    # Create directories if it doesn't exist
+    if not os.path.exists(RESULTS_PATH):
+        os.mkdir(RESULTS_PATH)
+    
+    results_path = RESULTS_PATH / args.method 
+    if not os.path.exists(results_path):
+        os.mkdir(results_path)
+    
+    results_path = RESULTS_PATH / args.method / f"{args.config}_time_{formatted_time}_seed_{args.cv_seed}_folds_{args.n_folds}"
+    if not os.path.exists(results_path):
+        os.mkdir(results_path)
+    
+    # Save config
+    with open(results_path / "config.yaml", "w") as file:
+        yaml.dump(config.__dict__, file)
+        print(f"Config saved to: {results_path / 'config.yaml'}")
+    
+    # Save metrics
+    cross_validation_metrics.to_json(results_path / "metrics.json")
+    print(f"Metrics saved to: {results_path / 'metrics.json'}")
+    
+    # Retrain and save model
+    if args.retrain:
+        print("Retraining model...")
+        model.train(data)
+        saved_model_path = model.save(str(results_path / "saved_model"))
+        print(f"Model saved to: {saved_model_path}")
 
 
-def load_config(args):
+def load_config(args) -> argparse.Namespace:
     with open(CONFIG_PATH / args.method / f"{args.config}.yaml") as file:
         config = yaml.safe_load(file)
 
@@ -58,20 +96,36 @@ def create_model(args, config) -> ModelBase:
     else:
         raise NotImplementedError(f"{args.method} method not implemented.")
 
-def cross_validation(data: anndata.AnnData, model: ModelBase, random_state: int=42, n_folds: int=5):
+def cross_validation(data: anndata.AnnData, model: ModelBase, random_state: int=42, n_folds: int=5) -> pd.DataFrame:
     torch.manual_seed(42)
 
-    accuracy_sum = 0.
+    metrics_names = ["f1_score_per_cell_type",
+                    "f1_score",
+                    "accuracy",
+                    "average_precision_per_cell_type",
+                    "roc_auc_per_cell_type",
+                    "confusion_matrix"
+                    ]
+    
+    cross_validation_metrics = pd.DataFrame(columns=metrics_names)
+
     for i, (train_data, test_data) in enumerate(k_folds(data, n_folds, random_state)):
         model.train(train_data)
-        pred = model.predict(test_data)
+        prediction = model.predict(test_data)
+        prediction_probability = model.predict_proba(test_data)
+        ground_truth = test_data.obs["cell_labels"]
         
-        accuracy = (pred == test_data.obs["cell_labels"]).sum() / len(pred)
-        print(f"Validation accuracy of {i} fold:", accuracy)
+        calculate_metrics(ground_truth, prediction,
+                          prediction_probability,
+                          test_data.obs["cell_labels"].cat.categories,
+                          cross_validation_metrics)
         
-        accuracy_sum += accuracy
+        print(f"Validation accuracy of {i} fold:", cross_validation_metrics.loc[i]["accuracy"])
 
-    return accuracy_sum / n_folds
+    average_metrics = { metric_name: cross_validation_metrics[metric_name].mean() for metric_name in metrics_names }
+    cross_validation_metrics.loc[len(cross_validation_metrics.index)] = average_metrics
+    
+    return cross_validation_metrics
 
 def k_folds(data: anndata.AnnData, n_folds: int, random_state: int):
     sample_ids = data.obs["sample_id"].cat.remove_unused_categories()
@@ -86,6 +140,24 @@ def k_folds(data: anndata.AnnData, n_folds: int, random_state: int):
 
         yield data[train_mask], data[test_mask]
         
+def calculate_metrics(ground_truth, prediction, prediction_probability, classes, cross_validation_metrics):
+    f1_score_per_cell_type = sklearn.metrics.f1_score(ground_truth, prediction, labels=classes, average=None)
+    f1_score = sklearn.metrics.f1_score(ground_truth, prediction, labels=classes, average="macro")
+    accuracy = sklearn.metrics.accuracy_score(ground_truth, prediction)
+    average_precision_per_cell_type = sklearn.metrics.average_precision_score(ground_truth, prediction_probability, average=None)
+    roc_auc_per_cell_type = sklearn.metrics.roc_auc_score(ground_truth, prediction_probability, multi_class='ovr', average=None, labels=classes)
+    confusion_matrix = sklearn.metrics.confusion_matrix(ground_truth, prediction, labels=classes)
+    
+    metrics = {
+        "f1_score_per_cell_type": f1_score_per_cell_type,
+        "f1_score": f1_score,
+        "accuracy": accuracy,
+        "average_precision_per_cell_type": average_precision_per_cell_type,
+        "roc_auc_per_cell_type": roc_auc_per_cell_type,
+        "confusion_matrix": confusion_matrix
+    }
+    
+    cross_validation_metrics.loc[len(cross_validation_metrics.index)] = metrics
 
 if __name__ == "__main__":
     main()
