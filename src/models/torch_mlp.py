@@ -46,6 +46,16 @@ class TorchMLP(ModelBase):
         pred_labels = data.obs["cell_labels"].cat.categories[preds].to_numpy()
         
         return pred_labels
+    
+    def predict_proba(self, data: anndata.AnnData) -> np.ndarray:
+        X = data.layers['exprs']
+        X = torch.tensor(X).float()
+        self.mlp.eval()
+        with torch.no_grad():
+            logits = self.mlp(X)
+        prediction_probabilities = nn.functional.softmax(logits, dim=1).detach().numpy()
+        
+        return prediction_probabilities
 
     def save(self, file_path: str) -> None:
         torch.save(self.mlp.state_dict(), file_path)
@@ -123,7 +133,6 @@ class TorchMLP(ModelBase):
 
             if self._no_improvement_count > N_INTER_NO_CHANGE:
                 break	
-
 
         if early_stopping:
             self.mlp.load_state_dict(self.best_model_weights)

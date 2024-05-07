@@ -28,6 +28,13 @@ class SklearnMLP(ModelBase):
 
         return data.obs["cell_labels"].cat.categories[prediction].to_numpy()
     
+    def predict_proba(self, data: anndata.AnnData) -> np.ndarray:
+        X = data.layers['exprs']
+        
+        prediction_probabilities = self.mlp_classifier.predict_proba(X)
+        
+        return prediction_probabilities
+    
     def save(self, file_path: str) -> None:
         dump(self.mlp_classifier, file_path) 
 
