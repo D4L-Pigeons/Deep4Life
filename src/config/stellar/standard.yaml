@@ -6,28 +6,8 @@ batch_size: 1
 # training
 lr: 0.001
 epochs: 20
-weight_decay: 0
 # model
-hid_dim: 160
 input_dim: 40
+hid_dim: 160
 # output
 num_classes: 14
-target_labels:
-  - B
-  - BnT
-  - CD4
-  - CD8
-  - DC
-  - HLADR
-  - MacCD163
-  - Mural
-  - NK
-  - Neutrophil
-  - Treg
-  - Tumor
-  - pDC
-  - plasma
-# encoder implementation - 0 stands for vanilla version
-encoder_impl: 0
-# fc_net implementation - 0 stands for vanilla version
-classification_head_impl: 0 

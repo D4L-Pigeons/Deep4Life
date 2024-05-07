@@ -1,7 +1,6 @@
 import copy
 from itertools import cycle
 from typing import Generator, Optional, Tuple
-
 import anndata
 import numpy as np
 import pandas as pd
@@ -20,13 +19,16 @@ from torch import Tensor
 from anndata import AnnData
 from typing import Optional, Tuple, Generator
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
 import scanpy as sc
 from tqdm import tqdm
-
 from datasets.stellar_data import (StellarDataloader,
                                    make_graph_list_from_anndata)
 from models.ModelBase import ModelBase
+from datasets.stellar_data import StellarDataloader, make_graph_list_from_anndata
+from itertools import cycle
+import anndata
+import pandas as pd
+from typing import Union
 from utils import (MarginLoss, calculate_batch_accuracy,
                    calculate_entropy_logits, calculate_entropy_probs)
 from datasets.stellar_data import StellarDataloader, make_graph_list_from_anndata
@@ -48,7 +50,6 @@ class VanillaStellarNormedLinear(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         assert type(x) == Tensor, f"Expected Tensor, got {type(x)}"
-        # print(type(x), type(self.weight))
 
         out = F.normalize(x, dim=1).mm(F.normalize(self.weight, dim=0))
         return self.temperature * out
@@ -341,19 +342,18 @@ class VanillaStellarReduced(ModelBase):
         self.device = torch.device(cfg.device)
         self.model = VanillaStellarModel(cfg.input_dim, cfg.hid_dim, cfg.num_classes).to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=cfg.lr)
-        self.label_encoder = LabelEncoder().fit(cfg.target_labels)
-
+    
     def train(self, data: anndata.AnnData) -> None:
         self.model = VanillaStellarModel(self.cfg.input_dim, self.cfg.hid_dim, self.cfg.num_classes).to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.cfg.lr)
         
-        graphs = make_graph_list_from_anndata(data, self.label_encoder, self.cfg.distance_threshold)
+        graphs = make_graph_list_from_anndata(data, self.cfg.distance_threshold)
         train_data_loader = StellarDataloader(graphs, batch_size=self.cfg.batch_size)
         
         self._train(train_data_loader, self.cfg.epochs)
 
     def predict(self, data: anndata.AnnData) -> np.ndarray:
-        graphs = make_graph_list_from_anndata(data, self.label_encoder, self.cfg.distance_threshold)
+        graphs = make_graph_list_from_anndata(data, self.cfg.distance_threshold)
         batched_graphs =  Batch.from_data_list(graphs)
         cell_ids = np.concatenate(batched_graphs.cell_ids)
         
@@ -365,11 +365,23 @@ class VanillaStellarReduced(ModelBase):
         
         return pd.Series(data=pred_labels, index=cell_ids).reindex(data.obs.index).to_numpy()
 
-    def save(self, file_path: str) -> str:
-        raise NotImplementedError()
+    def predict_proba(self, data: anndata.AnnData) -> np.ndarray:
+        graphs = make_graph_list_from_anndata(data, self.cfg.distance_threshold)
+        batched_graphs =  Batch.from_data_list(graphs)
+        
+        self.model.eval()
+        with torch.no_grad():
+            logits, _ = self.model(batched_graphs)
+        probs = F.softmax(logits, dim=1).detach().numpy()
+        return probs
+
+    def save(self, file_path: str) -> None:
+        save_path = file_path + ".pth"
+        torch.save(self.model.state_dict(), save_path)
+        return save_path
 
     def load(self, file_path: str) -> None:
-        raise NotImplementedError()
+        self.model.load_state_dict(torch.load(file_path + ".pth"))
 
     def _train(
             self,
