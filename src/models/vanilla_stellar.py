@@ -29,6 +29,11 @@ from datasets.stellar_data import (StellarDataloader,
 from models.ModelBase import ModelBase
 from utils import (MarginLoss, calculate_batch_accuracy,
                    calculate_entropy_logits, calculate_entropy_probs)
+from datasets.stellar_data import StellarDataloader, make_graph_list_from_anndata
+from itertools import cycle
+import anndata
+import pandas as pd
+from typing import Union
 
 
 class VanillaStellarNormedLinear(nn.Module):
@@ -370,7 +375,7 @@ class VanillaStellarReduced(ModelBase):
             self,
             train_loader: DataLoader,
             epochs: int,
-            valid_loader: DataLoader | None = None,
+            valid_loader: Union[DataLoader, None] = None,
             return_valid_acc: bool = False
             ) -> Optional[float]:
         r"""

@@ -2,6 +2,11 @@
 
 All the results are in the [Presentation](https://docs.google.com/presentation/d/1VP0hD3Spl1-d2TDUZf92NAkSbDK-Y4ACYHqFUOCzhMk/edit?usp=sharing).
 
+## Installation
+```cd src```
+```python3 train_and_validate.py --help``` to display help
+```python train_and_validate.py --method stellar```
+
 ### Notebooks
 All the notebooks are in folder ```notebooks```. 
 
