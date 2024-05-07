@@ -1,7 +1,6 @@
 import copy
 from itertools import cycle
 from typing import Generator, Optional, Tuple
-
 import anndata
 import numpy as np
 import pandas as pd
@@ -20,24 +19,18 @@ from torch import Tensor
 from anndata import AnnData
 from typing import Optional, Tuple, Generator
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
 import scanpy as sc
 from tqdm import tqdm
-
 from datasets.stellar_data import (StellarDataloader,
                                    make_graph_list_from_anndata)
 from models.ModelBase import ModelBase
-<<<<<<< HEAD
 from datasets.stellar_data import StellarDataloader, make_graph_list_from_anndata
-from utils import calculate_entropy_logits, calculate_entropy_probs, calculate_batch_accuracy, MarginLoss
 from itertools import cycle
 import anndata
 import pandas as pd
 from typing import Union
-=======
 from utils import (MarginLoss, calculate_batch_accuracy,
                    calculate_entropy_logits, calculate_entropy_probs)
->>>>>>> 1a06469ddc8ac5d1eb1384c1fc8bce2d479364a6
 
 
 class VanillaStellarNormedLinear(nn.Module):
@@ -52,7 +45,6 @@ class VanillaStellarNormedLinear(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         assert type(x) == Tensor, f"Expected Tensor, got {type(x)}"
-        # print(type(x), type(self.weight))
 
         out = F.normalize(x, dim=1).mm(F.normalize(self.weight, dim=0))
         return self.temperature * out
@@ -368,11 +360,11 @@ class VanillaStellarReduced(ModelBase):
         
         return pd.Series(data=pred_labels, index=cell_ids).reindex(data.obs.index).to_numpy()
 
-    def save(self, file_path: str) -> str:
-        raise NotImplementedError()
+    def save(self, file_path: str) -> None:
+        torch.save(self.model.state_dict(), file_path)
 
     def load(self, file_path: str) -> None:
-        raise NotImplementedError()
+        self.model.load_state_dict(torch.load(file_path))
 
     def _train(
             self,
