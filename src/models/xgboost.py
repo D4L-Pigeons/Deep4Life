@@ -1,7 +1,7 @@
-from xgboost import XGBClassifier
-from sklearn.preprocessing import MinMaxScaler
 import anndata
 import numpy as np
+from sklearn.preprocessing import MinMaxScaler
+from xgboost import XGBClassifier
 
 from models.ModelBase import ModelBase
 
@@ -34,11 +34,21 @@ class XGBoostModel(ModelBase):
         prediction = self.xgboost.predict(X_scaled)
 
         return data.obs["cell_labels"].cat.categories[prediction].to_numpy()
+    
+    def predict_proba(self, data: anndata.AnnData) -> np.ndarray:
+        X = data.layers['exprs']
+        X_scaled = self.scaler.transform(X)
+        
+        prediction_probabilities = self.xgboost.predict_proba(X_scaled)
+        
+        return prediction_probabilities
 
-    def save(self, file_path: str) -> None:
-        raise NotImplementedError()
+    def save(self, file_path: str) -> str:
+        path_with_ext = file_path + ".json"
+        self.xgboost.save_model(path_with_ext)
+        return path_with_ext
 
     def load(self, file_path: str) -> None:
-        raise NotImplementedError()
+        self.xgboost.load_model(file_path)
 
         

@@ -3,9 +3,26 @@
 All the results are in the [Presentation](https://docs.google.com/presentation/d/1VP0hD3Spl1-d2TDUZf92NAkSbDK-Y4ACYHqFUOCzhMk/edit?usp=sharing).
 
 ## Installation
+
+We recommend creating ```venv``` or ```coda``` environment with ```python>=3.9.
+
+## Overview
+When you want to run any experiment, run:
 ```cd src```
-```python3 train_and_validate.py --help``` to display help
-```python train_and_validate.py --method stellar```
+and then
+```python3 train_and_validate.py [ARGUMENTS]```
+
+with possible options:
+  ```-h, --help```: show this help message and exit
+  ```--dataset-path``` (default="data/train"): dataset path
+  ```--method``` {stellar,torch_mlp,sklearn_mlp,xgboost} (default="stellar"): 
+  ```--config``` (default="standard"): Name of a configuration in src/config/{method} directory.
+  ```--cv-seed``` (default=42): Seed used to make k folds for cross validation.
+  ```--n-folds``` (default=5): Number of folds in cross validation.
+  ```--retrain``` (default=True): Retrain a model using the whole dataset.
+
+
+We recommend using ```--config``` flag. Sample configs are given in ```src/config/{method}``` folders.
 
 ### Notebooks
 All the notebooks are in folder ```notebooks```. 
