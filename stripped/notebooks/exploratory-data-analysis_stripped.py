@@ -18,7 +18,7 @@ from typing import List
 
 from datasets import load_d4ls
 
-pd.set_option('display.max_columns', None)
+pd.set_option("display.max_columns", None)
 
 
 # ## EDA utils
@@ -27,27 +27,33 @@ pd.set_option('display.max_columns', None)
 
 
 def make_class_distribution_plot(
-        df: DataFrame,
-        class_var: str,
-        title: str,
-        ) -> None:
+    df: DataFrame,
+    class_var: str,
+    title: str,
+) -> None:
     r"""
     Plot the distribution of the given class variable in the dataframe.
     """
 
     plt.figure(figsize=(10, 4))
-    plt.bar(df[class_var].value_counts().index, df[class_var].value_counts().values / len(df), color='grey', edgecolor='black')
+    plt.bar(
+        df[class_var].value_counts().index,
+        df[class_var].value_counts().values / len(df),
+        color="grey",
+        edgecolor="black",
+    )
     plt.xticks(rotation=35)
     plt.xlabel(class_var)
-    plt.ylabel('Frequency')
+    plt.ylabel("Frequency")
     plt.title(title)
     plt.show()
 
+
 def make_histograms(
-        df: DataFrame,
-        quant_vars: List[str],
-        title: str,
-        ) -> None:
+    df: DataFrame,
+    quant_vars: List[str],
+    title: str,
+) -> None:
     r"""
     Plot histograms of the given quantitative variables in the dataframe.
     """
@@ -61,18 +67,18 @@ def make_histograms(
         row = i // 2
         col = i % 2
         ax = axes[row, col]
-        ax.hist(df[var], density=True, bins=100, color='grey', edgecolor='black')
+        ax.hist(df[var], density=True, bins=100, color="grey", edgecolor="black")
         ax.set_xlabel(var)
-        ax.set_ylabel('Probability Density')
+        ax.set_ylabel("Probability Density")
 
     plt.show()
 
 
 def make_boxplots(
-        df: DataFrame,
-        quant_vars: List[str],
-        title: str,
-        ) -> None:
+    df: DataFrame,
+    quant_vars: List[str],
+    title: str,
+) -> None:
     r"""
     Plot boxplots of the given quantitative variables in the dataframe.
     """
@@ -86,19 +92,28 @@ def make_boxplots(
         row = i // 2
         col = i % 2
         ax = axes[row, col]
-        ax.boxplot(df[var], vert=False, patch_artist=True, boxprops=dict(facecolor='grey', color='black'), whiskerprops=dict(color='black'), capprops=dict(color='black'), medianprops=dict(color='black'), flierprops=dict(marker='o', markersize=3, linestyle='none'))
+        ax.boxplot(
+            df[var],
+            vert=False,
+            patch_artist=True,
+            boxprops=dict(facecolor="grey", color="black"),
+            whiskerprops=dict(color="black"),
+            capprops=dict(color="black"),
+            medianprops=dict(color="black"),
+            flierprops=dict(marker="o", markersize=3, linestyle="none"),
+        )
         ax.set_xlabel(var)
-        ax.set_ylabel('Value')
+        ax.set_ylabel("Value")
 
     plt.show()
 
 
 def make_boxplots_per_celltype(
-        df: DataFrame,
-        class_var: str,
-        quant_var: str,
-        title: str,
-        ) -> None:
+    df: DataFrame,
+    class_var: str,
+    quant_var: str,
+    title: str,
+) -> None:
     r"""
     Plot boxplots of the given quantitative variables in the dataframe, grouped by cell type.
     """
@@ -107,29 +122,34 @@ def make_boxplots_per_celltype(
     labels = df[class_var].unique()
 
     plt.figure(figsize=(12, 6))
-    plt.boxplot(x=x, labels=labels, vert=False, patch_artist=True, 
-                boxprops=dict(facecolor='grey', color='black'), 
-                whiskerprops=dict(color='black'), 
-                capprops=dict(color='black'), 
-                medianprops=dict(color='black'), 
-                flierprops=dict(marker='o', markersize=3, linestyle='none'))
+    plt.boxplot(
+        x=x,
+        labels=labels,
+        vert=False,
+        patch_artist=True,
+        boxprops=dict(facecolor="grey", color="black"),
+        whiskerprops=dict(color="black"),
+        capprops=dict(color="black"),
+        medianprops=dict(color="black"),
+        flierprops=dict(marker="o", markersize=3, linestyle="none"),
+    )
     plt.title(title)
     plt.show()
 
 
 def make_corr_plot(
-        df: DataFrame,
-        vars: List[str],
-        title: str,
-        method: str = 'spearman',
-        ) -> None:
+    df: DataFrame,
+    vars: List[str],
+    title: str,
+    method: str = "spearman",
+) -> None:
     r"""
     Plot a correlation matrix of the given variables in the dataframe.
     """
 
     correlation_matrix = df[vars].corr(method=method)
     plt.figure(figsize=(5, 4))
-    plt.imshow(correlation_matrix, cmap='grey', interpolation='nearest')
+    plt.imshow(correlation_matrix, cmap="grey", interpolation="nearest")
     plt.colorbar()
     plt.xticks(range(len(vars)), vars, rotation=45)
     plt.yticks(range(len(vars)), vars)
@@ -192,12 +212,12 @@ display(train_anndata.var.isna().sum())
 display(train_anndata.layers)
 layer_types = [type(layer) for layer in train_anndata.layers.values()]
 display(layer_types)
-display(train_anndata.layers['counts'].shape)
-display(train_anndata.layers['counts'].dtype)
-display(train_anndata.layers['exprs'].shape)
-display(train_anndata.layers['exprs'].dtype)
-display(train_anndata.layers['counts'][0, :])
-display(train_anndata.layers['exprs'][0, :])
+display(train_anndata.layers["counts"].shape)
+display(train_anndata.layers["counts"].dtype)
+display(train_anndata.layers["exprs"].shape)
+display(train_anndata.layers["exprs"].dtype)
+display(train_anndata.layers["counts"][0, :])
+display(train_anndata.layers["exprs"][0, :])
 
 
 # ### Checking values
@@ -222,7 +242,7 @@ train_anndata.obs.columns
 # In[122]:
 
 
-make_class_distribution_plot(train_anndata.obs, 'celltypes', 'Class Distribution')
+make_class_distribution_plot(train_anndata.obs, "celltypes", "Class Distribution")
 
 
 # ### Independent obs variables distributions
@@ -230,20 +250,35 @@ make_class_distribution_plot(train_anndata.obs, 'celltypes', 'Class Distribution
 # In[123]:
 
 
-obs_quant_vars = ['area', 'major_axis_length', 'minor_axis_length', 'eccentricity', 'width_px', 'height_px']
+obs_quant_vars = [
+    "area",
+    "major_axis_length",
+    "minor_axis_length",
+    "eccentricity",
+    "width_px",
+    "height_px",
+]
 train_anndata.obs[obs_quant_vars].describe()
 
 
 # In[124]:
 
 
-make_histograms(train_anndata.obs, obs_quant_vars, 'Histograms of Quantitative Variables in the obs Training Data')
+make_histograms(
+    train_anndata.obs,
+    obs_quant_vars,
+    "Histograms of Quantitative Variables in the obs Training Data",
+)
 
 
 # In[125]:
 
 
-make_boxplots(train_anndata.obs, obs_quant_vars, 'Boxplots of Quantitative Variables in the obs Training Data')
+make_boxplots(
+    train_anndata.obs,
+    obs_quant_vars,
+    "Boxplots of Quantitative Variables in the obs Training Data",
+)
 
 
 # ### Independent obs variables distributions per cell type
@@ -251,12 +286,42 @@ make_boxplots(train_anndata.obs, obs_quant_vars, 'Boxplots of Quantitative Varia
 # In[126]:
 
 
-make_boxplots_per_celltype(train_anndata.obs, 'celltypes', 'area', 'Boxplots of Area by Cell Type in the obs Training Data')
-make_boxplots_per_celltype(train_anndata.obs, 'celltypes', 'major_axis_length', 'Boxplots of Major Axis Length by Cell Type in the obs Training Data')
-make_boxplots_per_celltype(train_anndata.obs, 'celltypes', 'minor_axis_length', 'Boxplots of Minor Axis Length by Cell Type in the obs Training Data')
-make_boxplots_per_celltype(train_anndata.obs, 'celltypes', 'eccentricity', 'Boxplots of Eccentricity by Cell Type in the obs Training Data')
-make_boxplots_per_celltype(train_anndata.obs, 'celltypes', 'width_px', 'Boxplots of Width by Cell Type in the obs Training Data')
-make_boxplots_per_celltype(train_anndata.obs, 'celltypes', 'height_px', 'Boxplots of Height by Cell Type in the obs Training Data')
+make_boxplots_per_celltype(
+    train_anndata.obs,
+    "celltypes",
+    "area",
+    "Boxplots of Area by Cell Type in the obs Training Data",
+)
+make_boxplots_per_celltype(
+    train_anndata.obs,
+    "celltypes",
+    "major_axis_length",
+    "Boxplots of Major Axis Length by Cell Type in the obs Training Data",
+)
+make_boxplots_per_celltype(
+    train_anndata.obs,
+    "celltypes",
+    "minor_axis_length",
+    "Boxplots of Minor Axis Length by Cell Type in the obs Training Data",
+)
+make_boxplots_per_celltype(
+    train_anndata.obs,
+    "celltypes",
+    "eccentricity",
+    "Boxplots of Eccentricity by Cell Type in the obs Training Data",
+)
+make_boxplots_per_celltype(
+    train_anndata.obs,
+    "celltypes",
+    "width_px",
+    "Boxplots of Width by Cell Type in the obs Training Data",
+)
+make_boxplots_per_celltype(
+    train_anndata.obs,
+    "celltypes",
+    "height_px",
+    "Boxplots of Height by Cell Type in the obs Training Data",
+)
 
 
 # ### Independent obs variables correlations
@@ -264,8 +329,18 @@ make_boxplots_per_celltype(train_anndata.obs, 'celltypes', 'height_px', 'Boxplot
 # In[127]:
 
 
-make_corr_plot(train_anndata.obs, obs_quant_vars, 'Correlation Matrix of Quantitative Variables in the obs Training Data (spearman)', method='spearman')
-make_corr_plot(train_anndata.obs, obs_quant_vars, 'Correlation Matrix of Quantitative Variables in the obs Training Data (pearson)', method='pearson')
+make_corr_plot(
+    train_anndata.obs,
+    obs_quant_vars,
+    "Correlation Matrix of Quantitative Variables in the obs Training Data (spearman)",
+    method="spearman",
+)
+make_corr_plot(
+    train_anndata.obs,
+    obs_quant_vars,
+    "Correlation Matrix of Quantitative Variables in the obs Training Data (pearson)",
+    method="pearson",
+)
 
 
 # ### Independent gene expression variables distributions
@@ -273,22 +348,27 @@ make_corr_plot(train_anndata.obs, obs_quant_vars, 'Correlation Matrix of Quantit
 # In[145]:
 
 
-train_anndata.var['marker'].values
+train_anndata.var["marker"].values
 
 
 # In[143]:
 
 
-plt.imshow(np.corrcoef(train_anndata.layers['exprs'].T))
+plt.imshow(np.corrcoef(train_anndata.layers["exprs"].T))
 
 
 # In[147]:
 
 
-marker_names = train_anndata.var['marker'].values
+marker_names = train_anndata.var["marker"].values
 
-df = pd.DataFrame(values=train_anndata.layers['exprs'], columns=marker_names)
-make_corr_plot(df, marker_names, 'Correlation Matrix of Marker Expression in the Training Data (spearman)', method='spearman')
+df = pd.DataFrame(values=train_anndata.layers["exprs"], columns=marker_names)
+make_corr_plot(
+    df,
+    marker_names,
+    "Correlation Matrix of Marker Expression in the Training Data (spearman)",
+    method="spearman",
+)
 
 
 # ### PCA 2 components plot
@@ -299,4 +379,4 @@ make_corr_plot(df, marker_names, 'Correlation Matrix of Marker Expression in the
 
 # ### Self organizing maps
 
-# 
+#

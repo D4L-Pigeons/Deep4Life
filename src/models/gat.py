@@ -47,12 +47,12 @@ class GAT(torch.nn.Module):
                 * num_heads_per_layer[i],  # consequence of concatenation
                 num_out_features=num_features_per_layer[i + 1],
                 num_of_heads=num_heads_per_layer[i + 1],
-                concat=True
-                if i < num_of_layers - 1
-                else False,  # last GAT layer does mean avg, the others do concat
-                activation=nn.ELU()
-                if i < num_of_layers - 1
-                else None,  # last layer just outputs raw scores
+                concat=(
+                    True if i < num_of_layers - 1 else False
+                ),  # last GAT layer does mean avg, the others do concat
+                activation=(
+                    nn.ELU() if i < num_of_layers - 1 else None
+                ),  # last layer just outputs raw scores
                 dropout_prob=dropout,
                 add_skip_connection=add_skip_connection,
                 bias=bias,

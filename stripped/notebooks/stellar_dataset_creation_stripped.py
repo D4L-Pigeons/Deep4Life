@@ -5,7 +5,8 @@
 
 
 import os
-os.chdir('../src')
+
+os.chdir("../src")
 import yaml
 import argparse
 import matplotlib.pyplot as plt
@@ -66,7 +67,7 @@ print(f"The calculated distance threshold equals {distance_threshold}")
 # In[10]:
 
 
-with open('config/stellar/standard.yaml', 'r') as file:
+with open("config/stellar/standard.yaml", "r") as file:
     cfg = argparse.Namespace(**yaml.safe_load(file))
 
 print(cfg)
@@ -111,11 +112,12 @@ graph_list[0]
 # In[22]:
 
 
-stellar_dataloader = StellarDataloader(graph_list, batch_size=cfg.batch_size, shuffle=True)
+stellar_dataloader = StellarDataloader(
+    graph_list, batch_size=cfg.batch_size, shuffle=True
+)
 
 
 # In[23]:
 
 
 next(iter(stellar_dataloader))
-
