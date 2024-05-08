@@ -3,32 +3,21 @@ device: cpu
 # data
 distance_threshold: 14.28
 batch_size: 1
+node_batch_size: 512 # applicable only for batch_type = node
 # training
-lr: 0.001
-epochs: 10
-weight_decay: 0.001
+lr: 0.002
+epochs: 20
+weight_decay: 0.0001
+batch_type: graph # ['graph', 'node']
 # model
 input_dim: 40
-hid_dim: 100
+hid_dim: 160
 # output
 num_classes: 14
-target_labels:
-  - B
-  - BnT
-  - CD4
-  - CD8
-  - DC
-  - HLADR
-  - MacCD163
-  - Mural
-  - NK
-  - Neutrophil
-  - Treg
-  - Tumor
-  - pDC
-  - plasma
-# encoder implementation - 0 stands for vanilla version
-encoder_impl: 0
-conv_layer_impl: 0
+# encoder implementation
+n_graph_layers: 1
+batch_norm: False
+# conv_net implementation - ['GCNConv', 'SAGEConv', 'GraphConv', 'GatedGraphConv', 'ResGatedGraphConv', 'GATConv', 'GATv2Conv', 'TransformerConv', 'AGNNConv', 'TAGConv', 'ARMAConv', 'SGConv', 'MFConv', 'FeaStConv', 'HypergraphConv', 'LEConv', 'ClusterGCNConv', 'GENConv', 'FiLMConv', 'SuperGATConv']
+graph_conv_impl: FiLMConv
 # fc_net implementation - 0 stands for vanilla version
-classification_head_impl: 0 
+classification_head_impl: 0

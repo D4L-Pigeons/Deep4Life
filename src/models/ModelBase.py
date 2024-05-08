@@ -9,7 +9,7 @@ class ModelBase:
 
     def predict(self, data: anndata.AnnData) -> np.ndarray:
         raise NotImplementedError()
-    
+
     def predict_proba(self, data: anndata.AnnData) -> np.ndarray:
         raise NotImplementedError()
 
@@ -17,7 +17,7 @@ class ModelBase:
         """
         Returns:
             str: the file path to saved model. This method can add extension to given file_path.
-        """        
+        """
         raise NotImplementedError()
 
     def load(self, file_path: str) -> None:
