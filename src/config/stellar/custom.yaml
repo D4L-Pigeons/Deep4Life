@@ -8,7 +8,7 @@ node_batch_size: 512 # applicable only for batch_type = node
 lr: 0.002
 epochs: 20
 weight_decay: 0.0001
-batch_type: graph # ['graph', 'node']
+batch_type: graph # ['graph', 'neighbors', 'nodes_in_graph', 'random_nodes']
 # model
 input_dim: 40
 hid_dim: 160
