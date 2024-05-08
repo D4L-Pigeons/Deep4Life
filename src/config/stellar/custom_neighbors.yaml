@@ -6,7 +6,7 @@ batch_size: 1
 node_batch_size: 200 # applicable only for batch_type = node and neighbors
 # training
 lr: 0.001
-epochs: 5
+epochs: 10
 weight_decay: 0.0001
 batch_type: neighbors # ['graph', 'node', 'neighbors']
 # model
