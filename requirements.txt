@@ -1,13 +1,14 @@
 anndata==0.10.7
+auto_mix_prep==0.2.0
 joblib==1.4.2
 matplotlib==3.6.3
 numpy==1.26.4
 pandas==1.5.3
 pyometiff==1.0.0
 PyYAML==6.0.1
-PyYAML==6.0.1
 scanpy==1.10.1
-scikit_learn==1.0.2
+scikit_learn==1.4.2
 torch==2.2.2
 torch_geometric==2.5.3
 tqdm==4.66.4
+xgboost
