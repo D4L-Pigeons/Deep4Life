@@ -32,6 +32,8 @@ def run_stellar(args, dataset):
 
 
 def main():
+    np.random.seed(42)
+    torch.manual_seed(42)
     parser = argparse.ArgumentParser(description="STELLAR")
     parser.add_argument("--dataset", default="d4ls", help="dataset setting")
     parser.add_argument("--dataset-path", default="data/train", help="dataset path")
