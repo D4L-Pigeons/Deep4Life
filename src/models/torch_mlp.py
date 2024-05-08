@@ -65,7 +65,7 @@ class TorchMLP(ModelBase):
         return file_path + ".pt"
 
     def load(self, file_path: str) -> None:
-        self.mlp.load_state_dict(torch.load(file_path))
+        self.mlp.load_state_dict(torch.load(file_path + ".pt"))
 
     def _train(self, X_train, y_train, log=False, early_stopping=False):
         # train config. Probably it should be moved to config directory

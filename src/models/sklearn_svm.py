@@ -49,7 +49,7 @@ class SVMSklearnModel(ModelBase, metaclass=abc.ABCMeta):
         return path_with_ext
 
     def load(self, file_path: str) -> None:
-        self.svm = load(file_path)
+        self.svm = load(file_path + ".joblib")
 
 
 class SVMSklearnSVC(SVMSklearnModel):

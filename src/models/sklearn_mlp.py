@@ -16,7 +16,7 @@ class SklearnMLP(ModelBase):
             random_state=1,
             early_stopping=True,
             verbose=True,
-            max_iter=self.config.max_inter
+            max_iter=self.config.max_inter,
         )
 
     def train(self, data: anndata.AnnData) -> None:
@@ -44,4 +44,4 @@ class SklearnMLP(ModelBase):
         return file_path + ".joblib"
 
     def load(self, file_path: str) -> None:
-        self.mlp_classifier = load(file_path)
+        self.mlp_classifier = load(file_path + ".joblib")

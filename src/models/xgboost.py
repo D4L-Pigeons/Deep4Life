@@ -48,4 +48,4 @@ class XGBoostModel(ModelBase):
         return path_with_ext
 
     def load(self, file_path: str) -> None:
-        self.xgboost.load_model(file_path)
+        self.xgboost.load_model(file_path + ".json")
