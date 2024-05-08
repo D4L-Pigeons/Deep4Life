@@ -1,87 +1,43 @@
-from models.vanilla_stellar import VanillaStellarClassifficationHead
+from typing import Optional, Union
+
+import anndata
+import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch import Tensor
 import torch.optim as optim
-from torch_geometric.nn import (
-    GCNConv,
-    ChebConv,
-    SAGEConv,
-    CuGraphSAGEConv,
-    GraphConv,
-    GravNetConv,
-    GatedGraphConv,
-    ResGatedGraphConv,
-    GATConv,
-    CuGraphGATConv,
-    FusedGATConv,
-    GATv2Conv,
-    TransformerConv,
-    AGNNConv,
-    TAGConv,
-    GINConv,
-    GINEConv,
-    ARMAConv,
-    SGConv,
-    SSGConv,
-    APPNP,
-    MFConv,
-    RGCNConv,
-    FastRGCNConv,
-    CuGraphRGCNConv,
-    RGATConv,
-    SignedConv,
-    DNAConv,
-    PointNetConv,
-    GMMConv,
-    SplineConv,
-    NNConv,
-    CGConv,
-    EdgeConv,
-    DynamicEdgeConv,
-    XConv,
-    PPFConv,
-    FeaStConv,
-    PointTransformerConv,
-    HypergraphConv,
-    LEConv,
-    PNAConv,
-    ClusterGCNConv,
-    GENConv,
-    GCN2Conv,
-    PANConv,
-    WLConv,
-    WLConvContinuous,
-    FiLMConv,
-    SuperGATConv,
-    FAConv,
-    EGConv,
-    PDNConv,
-    GeneralConv,
-    HGTConv,
-    HEATConv,
-    HeteroConv,
-    HANConv,
-    LGConv,
-    PointGNNConv,
-    GPSConv,
-    AntiSymmetricConv,
-    DirGNNConv,
-    MixHopConv,
-)
-from torch_geometric.data import Data, Batch
+import torch_geometric
 import torch_geometric.nn as pyg_nn
-from torch_geometric.loader import DataLoader, RandomNodeLoader
-from typing import Optional
-import numpy as np
+from torch import Tensor
+from torch_geometric.data import Batch, Data
+from torch_geometric.loader import DataLoader, RandomNodeLoader, NeighborLoader
+from torch_geometric.nn import (APPNP, AGNNConv, AntiSymmetricConv, ARMAConv,
+                                CGConv, ChebConv, ClusterGCNConv,
+                                CuGraphGATConv, CuGraphRGCNConv,
+                                CuGraphSAGEConv, DirGNNConv, DNAConv,
+                                DynamicEdgeConv, EdgeConv, EGConv, FAConv,
+                                FastRGCNConv, FeaStConv, FiLMConv,
+                                FusedGATConv, GATConv, GatedGraphConv,
+                                GATv2Conv, GCN2Conv, GCNConv, GENConv,
+                                GeneralConv, GINConv, GINEConv, GMMConv,
+                                GPSConv, GraphConv, GravNetConv, HANConv,
+                                HEATConv, HeteroConv, HGTConv, HypergraphConv,
+                                LEConv, LGConv, MFConv, MixHopConv, NNConv,
+                                PANConv, PDNConv, PNAConv, PointGNNConv,
+                                PointNetConv, PointTransformerConv, PPFConv,
+                                ResGatedGraphConv, RGATConv, RGCNConv,
+                                SAGEConv, SGConv, SignedConv, SplineConv,
+                                SSGConv, SuperGATConv, TAGConv,
+                                TransformerConv, WLConv, WLConvContinuous,
+                                XConv)
 from tqdm import tqdm
+
+from datasets.stellar_data import (StellarDataloader,
+                                   make_graph_list_from_anndata)
 from models.ModelBase import ModelBase
-from datasets.stellar_data import StellarDataloader, make_graph_list_from_anndata
+from models.vanilla_stellar import VanillaStellarClassifficationHead
 from utils import calculate_batch_accuracy
-import anndata
-import pandas as pd
-from typing import Union
 
 
 class CustomStellarEncoder(nn.Module):
@@ -96,6 +52,7 @@ class CustomStellarEncoder(nn.Module):
         input_dim: int,
         hid_dim: int,
         graph_conv_constructor: nn.Module,
+        n_hidden_layers: int = 1,
         n_graph_layers: int = 1,
         batch_norm: bool = False,
     ):
@@ -103,6 +60,7 @@ class CustomStellarEncoder(nn.Module):
         self.input_dim = input_dim
         self.hid_dim = hid_dim
         self.input_linear = nn.Linear(input_dim, hid_dim)
+        self.hidden_linear = nn.Sequential(*[nn.Sequential(nn.Linear(hid_dim, hid_dim), nn.ReLU() ) for _ in range(n_hidden_layers)])
         self.graph_convs = nn.ModuleList()
         self.batch_norm = batch_norm
         self.batch_norms = nn.ModuleList()
@@ -114,6 +72,7 @@ class CustomStellarEncoder(nn.Module):
     def forward(self, data: Data):
         x, edge_index = data.x, data.edge_index
         feat = F.relu(self.input_linear(x))
+        feat = self.hidden_linear(feat)
         out_feat = feat
         for i, layer in enumerate(self.graph_convs):
             out_feat = layer(out_feat, edge_index)
@@ -161,7 +120,7 @@ class CustomStellarClassifficationHead(nn.Module):
     def __init__(self, input_dim: int, num_classes: int, temperature: float):
         super(CustomStellarClassifficationHead, self).__init__()
         self.linear = nn.Sequential(
-            nn.Linear(input_dim, num_classes), nn.LayerNorm(num_classes)
+            nn.Linear(input_dim, num_classes),
         )
         self.temperature = temperature
 
@@ -169,10 +128,25 @@ class CustomStellarClassifficationHead(nn.Module):
         out = self.linear(x)
         return out * self.temperature
 
+class CustomSimpleStellarClassifficationHead(nn.Module):
+    r"""
+    A classification head that uses a linear layer to make predictions.
+
+    It is just linear layer.
+    """
+
+    def __init__(self, input_dim: int, num_classes: int, temperature: float):
+        super(CustomSimpleStellarClassifficationHead, self).__init__()
+        self.linear = nn.Linear(input_dim, num_classes)
+
+    def forward(self, x: Tensor) -> Tensor:
+        out = self.linear(x)
+        return out
 
 CLASSIFICATION_HEAD_IMPLEMENTATIONS = [
     VanillaStellarClassifficationHead,
     CustomStellarClassifficationHead,
+    CustomSimpleStellarClassifficationHead
 ]
 
 
@@ -186,6 +160,7 @@ class CustomStellarModel(nn.Module):
     def __init__(
         self,
         graph_conv_constructor: nn.Module,
+        n_hidden_layers: int,
         n_graph_layers: int,
         batch_norm: bool,
         fc_net_constructor: nn.Module,
@@ -196,7 +171,7 @@ class CustomStellarModel(nn.Module):
     ):
         super(CustomStellarModel, self).__init__()
         self.encoder = CustomStellarEncoder(
-            input_dim, hid_dim, graph_conv_constructor, n_graph_layers, batch_norm
+            input_dim, hid_dim, graph_conv_constructor, n_hidden_layers, n_graph_layers, batch_norm
         )
         self.fc_net = fc_net_constructor(hid_dim, num_classes, temperature=temperature)
 
@@ -213,6 +188,7 @@ class CustomStellarReduced(ModelBase):
         self.device = torch.device(cfg.device)
         self.model = CustomStellarModel(
             GRAPH_CONV_IMPLEMENTATIONS[cfg.graph_conv_impl],
+            cfg.n_hidden_layers,
             cfg.n_graph_layers,
             cfg.batch_norm,
             CLASSIFICATION_HEAD_IMPLEMENTATIONS[cfg.classification_head_impl],
@@ -227,6 +203,7 @@ class CustomStellarReduced(ModelBase):
     def train(self, data: anndata.AnnData) -> None:
         self.model = CustomStellarModel(
             GRAPH_CONV_IMPLEMENTATIONS[self.cfg.graph_conv_impl],
+            self.cfg.n_hidden_layers,
             self.cfg.n_graph_layers,
             self.cfg.batch_norm,
             CLASSIFICATION_HEAD_IMPLEMENTATIONS[self.cfg.classification_head_impl],
@@ -239,12 +216,20 @@ class CustomStellarReduced(ModelBase):
         )
 
         graphs = make_graph_list_from_anndata(data, self.cfg.distance_threshold)
-        train_data_loader = StellarDataloader(graphs, batch_size=self.cfg.batch_size)
+        batched_graphs = Batch.from_data_list(graphs)
 
         if self.cfg.batch_type == "graph":
+            train_data_loader = StellarDataloader(graphs, batch_size=self.cfg.batch_size)
             self._train_graph_batch(train_data_loader, self.cfg.epochs)
-        elif self.cfg.batch_type == "node":
+        elif self.cfg.batch_type == "neighbors":
+            train_data_loader = NeighborLoader(batched_graphs, num_neighbors=[5], batch_size=self.cfg.node_batch_size, shuffle=True)
+            self._train_graph_batch(train_data_loader, self.cfg.epochs)
+        elif self.cfg.batch_type == "nodes_in_graph":
+            train_data_loader = StellarDataloader(graphs, batch_size=self.cfg.batch_size)
             self._train_node_batch(train_data_loader, self.cfg.epochs)
+        elif self.cfg.batch_type == "random_nodes":
+            train_data_loader = RandomNodeLoader(batched_graphs, num_parts=batched_graphs.x.shape[0] // self.cfg.node_batch_size + 1, shuffle=True)
+            self._train_graph_batch(train_data_loader, self.cfg.epochs)
 
     def predict(self, data: anndata.AnnData) -> np.ndarray:
         graphs = make_graph_list_from_anndata(data, self.cfg.distance_threshold)
@@ -273,7 +258,7 @@ class CustomStellarReduced(ModelBase):
         probs = F.softmax(logits, dim=1).detach().numpy()
         return probs
 
-    def save(self, file_path: str) -> None:
+    def save(self, file_path: str) -> str:
         save_path = file_path + ".pth"
         torch.save(self.model.state_dict(), save_path)
         return save_path
@@ -360,7 +345,7 @@ class CustomStellarReduced(ModelBase):
             )
             for batch_number, batch in enumerate(train_progress_bar):
                 num_parts = len(batch.y) // self.cfg.node_batch_size + 1
-                rnl = RandomNodeLoader(batch, num_parts=num_parts)
+                rnl = RandomNodeLoader(batch, num_parts=num_parts, shuffle=True)
                 for part in rnl:
                     n += 1
                     part = part.to(self.device)

@@ -1,26 +1,26 @@
-import torch
-import anndata
-from sklearn.model_selection import KFold
-from datasets.data_utils import load_full_anndata
-from models.ModelBase import ModelBase
-from models.xgboost import XGBoostModel
 import argparse
 import datetime
 import os
 from pathlib import Path
+
 import anndata
+import numpy as np
 import pandas as pd
 import numpy as np
 import sklearn
 import sklearn.metrics
 import torch
-from models.vanilla_stellar import VanillaStellarReduced
-from models.custom_stellar import CustomStellarReduced
 import yaml
 from sklearn.model_selection import KFold
+
+from datasets.data_utils import load_full_anndata
+from models.custom_stellar import CustomStellarReduced
+from models.ModelBase import ModelBase
 from models.sklearn_mlp import SklearnMLP
 from models.torch_mlp import TorchMLP
 from models.sklearn_svm import SVMSklearnSVC
+from models.vanilla_stellar import VanillaStellarReduced
+from models.xgboost import XGBoostModel
 
 CONFIG_PATH: Path = Path(__file__).parent / "config"
 RESULTS_PATH: Path = Path(__file__).parent.parent / "results"
@@ -65,7 +65,7 @@ def main():
     current_time = datetime.datetime.now()
     formatted_time = current_time.strftime("%Y-%m-%d_%H-%M-%S")
 
-    # Create directories if it doesn't exist
+    # Create directories if they don't exist
     if not os.path.exists(RESULTS_PATH):
         os.mkdir(RESULTS_PATH)
 
