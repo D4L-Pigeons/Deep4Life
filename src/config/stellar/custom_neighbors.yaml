@@ -3,12 +3,12 @@ device: cpu
 # data
 distance_threshold: 14.28
 batch_size: 1
-node_batch_size: 200 # applicable only for batch_type = node
+node_batch_size: 200 # applicable only for batch_type = node and neighbors
 # training
 lr: 0.001
-epochs: 20
+epochs: 5
 weight_decay: 0.0001
-batch_type: graph # ['graph', 'node', 'neighbors']
+batch_type: neighbors # ['graph', 'node', 'neighbors']
 # model
 input_dim: 40
 hid_dim: 160
