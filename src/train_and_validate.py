@@ -63,7 +63,7 @@ def main():
     current_time = datetime.datetime.now()
     formatted_time = current_time.strftime("%Y-%m-%d_%H-%M-%S")
 
-    # Create directories if it doesn't exist
+    # Create directories if they don't exist
     if not os.path.exists(RESULTS_PATH):
         os.mkdir(RESULTS_PATH)
 
