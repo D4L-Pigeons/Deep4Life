@@ -71,7 +71,7 @@ def main():
 
     results_path = RESULTS_PATH / args.method
     if not os.path.exists(results_path):
-        os.mkdir(results_path)
+        os.makedirs(results_path)
 
     results_path = (
         RESULTS_PATH
@@ -221,16 +221,20 @@ def calculate_metrics(
         ground_truth, prediction, labels=classes, average="macro"
     )
     accuracy = sklearn.metrics.accuracy_score(ground_truth, prediction)
-    average_precision_per_cell_type = sklearn.metrics.average_precision_score(
-        ground_truth, prediction_probability, average=None
-    )
-    roc_auc_per_cell_type = sklearn.metrics.roc_auc_score(
-        ground_truth,
-        prediction_probability,
-        multi_class="ovr",
-        average=None,
-        labels=classes,
-    )
+    if prediction_probability is not None:
+        average_precision_per_cell_type = sklearn.metrics.average_precision_score(
+            ground_truth, prediction_probability, average=None
+        )
+        roc_auc_per_cell_type = sklearn.metrics.roc_auc_score(
+            ground_truth,
+            prediction_probability,
+            multi_class="ovr",
+            average=None,
+            labels=classes,
+        )
+    else:
+        average_precision_per_cell_type = None
+        roc_auc_per_cell_type = None
     confusion_matrix = sklearn.metrics.confusion_matrix(
         ground_truth, prediction, labels=classes
     )
