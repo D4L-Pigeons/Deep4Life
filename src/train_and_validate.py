@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import anndata
 import pandas as pd
+import numpy as np
 import sklearn
 import sklearn.metrics
 import torch
@@ -74,7 +75,7 @@ def main():
     results_path = (
         RESULTS_PATH
         / args.method
-        / f"{args.config}_time_{formatted_time}_seed_{args.cv_seed}_folds_{args.n_folds}"
+        / f"{args.config}_{formatted_time}_seed_{args.cv_seed}_folds_{args.n_folds}"
     )
     if not os.path.exists(results_path):
         os.mkdir(results_path)
@@ -177,6 +178,36 @@ def k_folds(data: anndata.AnnData, n_folds: int, random_state: int):
         yield data[train_mask], data[test_mask]
 
 
+def macro_average_precision(ground_truth, prediction_probability):
+  """
+  Calculates macro-averaged precision for multi-class classification.
+
+  Args:
+      ground_truth (array-like): Array of true labels.
+      prediction_probability (array-like): Array of predicted class probabilities.
+
+  Returns:
+      float: Macro-averaged precision score.
+  """
+  num_classes = len(ground_truth.unique())
+
+  precision_per_class = []
+
+  # Calculate precision score for each class
+  for class_label in range(num_classes):
+    class_mask = ground_truth == class_label
+    ground_truth_filtered = ground_truth[class_mask]
+    prediction_probability_filtered = prediction_probability[class_mask]
+    # Calculate precision for this class
+    precision = sklearn.metrics.precision_score(ground_truth_filtered, prediction_probability_filtered[:, class_label], average='binary', zero_division=0)
+    precision_per_class.append(precision)
+
+  # Macro-average the precision scores
+  macro_average_precision = np.mean(precision_per_class)
+  return macro_average_precision
+
+
+
 def calculate_metrics(
     ground_truth, prediction, prediction_probability, classes, cross_validation_metrics
 ):
@@ -187,14 +218,14 @@ def calculate_metrics(
         ground_truth, prediction, labels=classes, average="macro"
     )
     accuracy = sklearn.metrics.accuracy_score(ground_truth, prediction)
-    average_precision_per_cell_type = sklearn.metrics.average_precision_score(
-        ground_truth, prediction_probability, average=None
+    average_precision_per_cell_type = macro_average_precision(
+        ground_truth, prediction_probability
     )
     roc_auc_per_cell_type = sklearn.metrics.roc_auc_score(
         ground_truth,
         prediction_probability,
         multi_class="ovr",
-        average=None,
+        average='macro',
         labels=classes,
     )
     confusion_matrix = sklearn.metrics.confusion_matrix(
