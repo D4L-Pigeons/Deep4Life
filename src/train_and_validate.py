@@ -20,6 +20,7 @@ import yaml
 from sklearn.model_selection import KFold
 from models.sklearn_mlp import SklearnMLP
 from models.torch_mlp import TorchMLP
+from models.sklearn_svm import SVMSklearnSVC
 
 CONFIG_PATH: Path = Path(__file__).parent / "config"
 RESULTS_PATH: Path = Path(__file__).parent.parent / "results"
@@ -31,7 +32,7 @@ def main():
     parser.add_argument(
         "--method",
         default="stellar",
-        choices=["stellar", "torch_mlp", "sklearn_mlp", "xgboost"],
+        choices=["stellar", "torch_mlp", "sklearn_mlp", "xgboost", "sklearn_svm/svc"],
     )
     parser.add_argument(
         "--config",
@@ -116,6 +117,8 @@ def create_model(args, config) -> ModelBase:
         return SklearnMLP(config)
     elif args.method == "xgboost":
         return XGBoostModel(config)
+    elif args.method == "sklearn_svm/svc":
+        return SVMSklearnSVC(vars(config))
     else:
         raise NotImplementedError(f"{args.method} method not implemented.")
 
