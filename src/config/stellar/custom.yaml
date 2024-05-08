@@ -16,6 +16,7 @@ hid_dim: 160
 num_classes: 14
 # encoder implementation
 n_graph_layers: 1
+n_hidden_layers: 0
 batch_norm: False
 # conv_net implementation - ['GCNConv', 'SAGEConv', 'GraphConv', 'GatedGraphConv', 'ResGatedGraphConv', 'GATConv', 'GATv2Conv', 'TransformerConv', 'AGNNConv', 'TAGConv', 'ARMAConv', 'SGConv', 'MFConv', 'FeaStConv', 'HypergraphConv', 'LEConv', 'ClusterGCNConv', 'GENConv', 'FiLMConv', 'SuperGATConv']
 graph_conv_impl: FiLMConv

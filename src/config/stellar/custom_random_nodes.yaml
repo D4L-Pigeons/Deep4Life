@@ -3,12 +3,12 @@ device: cpu
 # data
 distance_threshold: 14.28
 batch_size: 1
-node_batch_size: 512 # applicable only for batch_type = node
+node_batch_size: 200 # applicable only for batch_type = node
 # training
 lr: 0.001
 epochs: 20
 weight_decay: 0.0001
-batch_type: node # ['graph', 'node']
+batch_type: random_nodes # ['graph', 'node']
 # model
 input_dim: 40
 hid_dim: 160
@@ -16,6 +16,7 @@ hid_dim: 160
 num_classes: 14
 # encoder implementation
 n_graph_layers: 0
+n_hidden_layers: 1
 batch_norm: False
 # conv_net implementation - ['GCNConv', 'SAGEConv', 'GraphConv', 'GatedGraphConv', 'ResGatedGraphConv', 'GATConv', 'GATv2Conv', 'TransformerConv', 'AGNNConv', 'TAGConv', 'ARMAConv', 'SGConv', 'MFConv', 'FeaStConv', 'HypergraphConv', 'LEConv', 'ClusterGCNConv', 'GENConv', 'FiLMConv', 'SuperGATConv']
 graph_conv_impl: FiLMConv
