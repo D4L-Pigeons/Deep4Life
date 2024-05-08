@@ -28,7 +28,7 @@ from typing import List, Tuple, Optional
 
 from src.datasets import load_d4ls
 
-pd.set_option('display.max_columns', None)
+pd.set_option("display.max_columns", None)
 
 
 # ### EDA utils
@@ -37,26 +37,46 @@ pd.set_option('display.max_columns', None)
 
 
 def make_class_distribution_plot(
+<<<<<<< HEAD
         df: DataFrame,
         class_var: str,
         title: str,
         display_desc: bool = False
         ) -> None:
+=======
+    df: DataFrame,
+    class_var: str,
+    title: str,
+) -> None:
+>>>>>>> master
     r"""
     Plot the distribution of the given class variable in the dataframe.
     """
 
     plt.figure(figsize=(10, 4))
-    plt.bar(df[class_var].value_counts().index, df[class_var].value_counts().values / len(df), color='grey', edgecolor='black')
+    plt.bar(
+        df[class_var].value_counts().index,
+        df[class_var].value_counts().values / len(df),
+        color="grey",
+        edgecolor="black",
+    )
     plt.xticks(rotation=35)
+<<<<<<< HEAD
     plt.ylabel('Frequency')
     if display_desc:
         plt.xlabel(class_var)
         plt.title(title)
     
+=======
+    plt.xlabel(class_var)
+    plt.ylabel("Frequency")
+    plt.title(title)
+>>>>>>> master
     plt.show()
 
+
 def make_histograms(
+<<<<<<< HEAD
         df: DataFrame,
         quant_vars: List[str],
         title: str,
@@ -65,6 +85,12 @@ def make_histograms(
         title_shift: float = 1,
         bins: int = 100
         ) -> None:
+=======
+    df: DataFrame,
+    quant_vars: List[str],
+    title: str,
+) -> None:
+>>>>>>> master
     r"""
     Plot histograms of the given quantitative variables in the dataframe.
     """
@@ -86,15 +112,22 @@ def make_histograms(
         row = i // num_cols
         col = i % num_cols
         ax = axes[row, col]
+<<<<<<< HEAD
         ax.hist(df[var], density=True, bins=bins, color='grey', edgecolor='black')
         ax.set_xlabel(var)
         ax.set_ylabel('PDF estimation', fontsize=7)
         ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))  
+=======
+        ax.hist(df[var], density=True, bins=100, color="grey", edgecolor="black")
+        ax.set_xlabel(var)
+        ax.set_ylabel("Probability Density")
+>>>>>>> master
 
     plt.show()
 
 
 def make_boxplots(
+<<<<<<< HEAD
         df: DataFrame,
         quant_vars: List[str],
         title: str,
@@ -102,6 +135,12 @@ def make_boxplots(
         display_desc: bool = False,
         title_shift: float = 1
         ) -> None:
+=======
+    df: DataFrame,
+    quant_vars: List[str],
+    title: str,
+) -> None:
+>>>>>>> master
     r"""
     Plot boxplots of the given quantitative variables in the dataframe.
     """
@@ -123,20 +162,37 @@ def make_boxplots(
         row = i // num_cols
         col = i % num_cols
         ax = axes[row, col]
-        ax.boxplot(df[var], vert=False, patch_artist=True, boxprops=dict(facecolor='grey', color='black'), whiskerprops=dict(color='black'), capprops=dict(color='black'), medianprops=dict(color='black'), flierprops=dict(marker='o', markersize=3, linestyle='none'))
+        ax.boxplot(
+            df[var],
+            vert=False,
+            patch_artist=True,
+            boxprops=dict(facecolor="grey", color="black"),
+            whiskerprops=dict(color="black"),
+            capprops=dict(color="black"),
+            medianprops=dict(color="black"),
+            flierprops=dict(marker="o", markersize=3, linestyle="none"),
+        )
         ax.set_xlabel(var)
-        ax.set_ylabel('Value')
+        ax.set_ylabel("Value")
 
     plt.show()
 
 
 def make_boxplots_per_celltype(
+<<<<<<< HEAD
         df: DataFrame,
         class_var: str,
         quant_var: str,
         title: str,
         display_desc: bool = False
         ) -> None:
+=======
+    df: DataFrame,
+    class_var: str,
+    quant_var: str,
+    title: str,
+) -> None:
+>>>>>>> master
     r"""
     Plot boxplots of the given quantitative variables in the dataframe, grouped by cell type.
     """
@@ -145,6 +201,7 @@ def make_boxplots_per_celltype(
     labels = df[class_var].unique()
 
     plt.figure(figsize=(12, 6))
+<<<<<<< HEAD
     plt.boxplot(x=x, labels=labels, vert=False, patch_artist=True, 
                 boxprops=dict(facecolor='grey', color='black'), 
                 whiskerprops=dict(color='black'), 
@@ -161,6 +218,41 @@ def make_boxplots_per_celltype(
 # ### Loading anndata
 
 # In[241]:
+=======
+    plt.boxplot(
+        x=x,
+        labels=labels,
+        vert=False,
+        patch_artist=True,
+        boxprops=dict(facecolor="grey", color="black"),
+        whiskerprops=dict(color="black"),
+        capprops=dict(color="black"),
+        medianprops=dict(color="black"),
+        flierprops=dict(marker="o", markersize=3, linestyle="none"),
+    )
+    plt.title(title)
+    plt.show()
+
+
+def make_corr_plot(
+    df: DataFrame,
+    vars: List[str],
+    title: str,
+    method: str = "spearman",
+) -> None:
+    r"""
+    Plot a correlation matrix of the given variables in the dataframe.
+    """
+
+    correlation_matrix = df[vars].corr(method=method)
+    plt.figure(figsize=(5, 4))
+    plt.imshow(correlation_matrix, cmap="grey", interpolation="nearest")
+    plt.colorbar()
+    plt.xticks(range(len(vars)), vars, rotation=45)
+    plt.yticks(range(len(vars)), vars)
+    plt.title(title)
+    plt.show()
+>>>>>>> master
 
 
 train_anndata = load_d4ls.load_full_anndata()
@@ -267,6 +359,7 @@ display(train_anndata.layers)
 
 layer_types = [type(layer) for layer in train_anndata.layers.values()]
 display(layer_types)
+<<<<<<< HEAD
 
 
 # In[14]:
@@ -290,6 +383,14 @@ display(train_anndata.layers['exprs'].dtype)
 
 display(train_anndata.layers['counts'][0, :])
 display(train_anndata.layers['exprs'][0, :])
+=======
+display(train_anndata.layers["counts"].shape)
+display(train_anndata.layers["counts"].dtype)
+display(train_anndata.layers["exprs"].shape)
+display(train_anndata.layers["exprs"].dtype)
+display(train_anndata.layers["counts"][0, :])
+display(train_anndata.layers["exprs"][0, :])
+>>>>>>> master
 
 
 # #### Checking values
@@ -393,6 +494,10 @@ train_anndata.obs.cell_labels.value_counts()
 
 make_class_distribution_plot(train_anndata.obs, 'cell_labels', 'Figure 1.1 Class Distribution', display_desc=True)
 
+<<<<<<< HEAD
+=======
+make_class_distribution_plot(train_anndata.obs, "celltypes", "Class Distribution")
+>>>>>>> master
 
 # #### Interpretation
 # As visible on the Figure 1 the cell labels distribution is highly unbalanced with half of the examples belonging to the Tumor class. This issue shold be taken into consideration in the trianing process if it is desired for each class to contribute "equally" in the training process.
@@ -402,20 +507,43 @@ make_class_distribution_plot(train_anndata.obs, 'cell_labels', 'Figure 1.1 Class
 # In[25]:
 
 
-obs_quant_vars = ['area', 'major_axis_length', 'minor_axis_length', 'eccentricity', 'width_px', 'height_px']
+obs_quant_vars = [
+    "area",
+    "major_axis_length",
+    "minor_axis_length",
+    "eccentricity",
+    "width_px",
+    "height_px",
+]
 train_anndata.obs[obs_quant_vars].describe()
 
 
 # In[26]:
 
 
+<<<<<<< HEAD
 make_histograms(train_anndata.obs, obs_quant_vars, 'Figure 1.2 Histograms of Quantitative Variables in the obs Training Data', display_desc=True, title_shift=0.95)
+=======
+make_histograms(
+    train_anndata.obs,
+    obs_quant_vars,
+    "Histograms of Quantitative Variables in the obs Training Data",
+)
+>>>>>>> master
 
 
 # In[27]:
 
 
+<<<<<<< HEAD
 make_boxplots(train_anndata.obs, obs_quant_vars, 'Figure 1.3 Boxplots of Quantitative Variables in the obs Training Data', display_desc=True, title_shift=0.95)
+=======
+make_boxplots(
+    train_anndata.obs,
+    obs_quant_vars,
+    "Boxplots of Quantitative Variables in the obs Training Data",
+)
+>>>>>>> master
 
 
 # #### Interpretation
@@ -426,7 +554,46 @@ make_boxplots(train_anndata.obs, obs_quant_vars, 'Figure 1.3 Boxplots of Quantit
 # In[28]:
 
 
+<<<<<<< HEAD
 make_boxplots_per_celltype(train_anndata.obs, 'cell_labels', 'area', 'Figure 1.4 Boxplots of Area by Cell Type in the obs Training Data', display_desc=True)
+=======
+make_boxplots_per_celltype(
+    train_anndata.obs,
+    "celltypes",
+    "area",
+    "Boxplots of Area by Cell Type in the obs Training Data",
+)
+make_boxplots_per_celltype(
+    train_anndata.obs,
+    "celltypes",
+    "major_axis_length",
+    "Boxplots of Major Axis Length by Cell Type in the obs Training Data",
+)
+make_boxplots_per_celltype(
+    train_anndata.obs,
+    "celltypes",
+    "minor_axis_length",
+    "Boxplots of Minor Axis Length by Cell Type in the obs Training Data",
+)
+make_boxplots_per_celltype(
+    train_anndata.obs,
+    "celltypes",
+    "eccentricity",
+    "Boxplots of Eccentricity by Cell Type in the obs Training Data",
+)
+make_boxplots_per_celltype(
+    train_anndata.obs,
+    "celltypes",
+    "width_px",
+    "Boxplots of Width by Cell Type in the obs Training Data",
+)
+make_boxplots_per_celltype(
+    train_anndata.obs,
+    "celltypes",
+    "height_px",
+    "Boxplots of Height by Cell Type in the obs Training Data",
+)
+>>>>>>> master
 
 
 # In[29]:
@@ -434,6 +601,21 @@ make_boxplots_per_celltype(train_anndata.obs, 'cell_labels', 'area', 'Figure 1.4
 
 make_boxplots_per_celltype(train_anndata.obs, 'cell_labels', 'major_axis_length', 'Figure 1.5 Boxplots of Major Axis Length by Cell Type in the obs Training Data', display_desc=True)
 
+<<<<<<< HEAD
+=======
+make_corr_plot(
+    train_anndata.obs,
+    obs_quant_vars,
+    "Correlation Matrix of Quantitative Variables in the obs Training Data (spearman)",
+    method="spearman",
+)
+make_corr_plot(
+    train_anndata.obs,
+    obs_quant_vars,
+    "Correlation Matrix of Quantitative Variables in the obs Training Data (pearson)",
+    method="pearson",
+)
+>>>>>>> master
 
 # In[30]:
 
@@ -441,18 +623,27 @@ make_boxplots_per_celltype(train_anndata.obs, 'cell_labels', 'major_axis_length'
 make_boxplots_per_celltype(train_anndata.obs, 'cell_labels', 'minor_axis_length', 'Figure 1.6 Boxplots of Minor Axis Length by Cell Type in the obs Training Data', display_desc=True)
 
 
+<<<<<<< HEAD
 # In[31]:
+=======
+train_anndata.var["marker"].values
+>>>>>>> master
 
 
 make_boxplots_per_celltype(train_anndata.obs, 'cell_labels', 'eccentricity', 'Figure 1.7 Boxplots of Eccentricity by Cell Type in the obs Training Data', display_desc=True)
 
 
+<<<<<<< HEAD
 # In[32]:
+=======
+plt.imshow(np.corrcoef(train_anndata.layers["exprs"].T))
+>>>>>>> master
 
 
 make_boxplots_per_celltype(train_anndata.obs, 'cell_labels', 'width_px', 'Boxplots of Width by Cell Type in the obs Training Data')
 
 
+<<<<<<< HEAD
 # In[33]:
 
 
@@ -645,6 +836,17 @@ make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_numbe
 
 marker_number = 4
 make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
+=======
+marker_names = train_anndata.var["marker"].values
+
+df = pd.DataFrame(values=train_anndata.layers["exprs"], columns=marker_names)
+make_corr_plot(
+    df,
+    marker_names,
+    "Correlation Matrix of Marker Expression in the Training Data (spearman)",
+    method="spearman",
+)
+>>>>>>> master
 
 
 # #### Interpretation
@@ -686,6 +888,7 @@ marker_number = 5
 make_boxplots_per_celltype(expressions, 'cell_labels', marker_names[marker_number], f'{marker_names[marker_number]} marker by cell type', display_desc=True)
 
 
+<<<<<<< HEAD
 # #### Interpretation
 # 1. **MacCD163 (Macrophage CD163)**: Macrophages expressing CD163 may exhibit variable levels of HLADR expression, particularly in activated or antigen-presenting macrophages involved in immune responses.
 # 
@@ -2464,3 +2667,6 @@ sns.scatterplot(expressions_with_indication, x='CD8a', y='FOXP3', hue='Indicatio
 # do a scatterplot colored by the PDL with the regression based factor selection as before but just for the selected types
 
 # Other dimensionality reduction possibilities: Kernel PCA, UMAP, T-sne, self organizing maps
+=======
+#
+>>>>>>> master

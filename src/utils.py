@@ -10,12 +10,14 @@ def calculate_entropy_logits(logits: Tensor, dim: int) -> Tensor:
     """
     return -(F.softmax(logits, dim=dim) * F.log_softmax(logits, dim=dim)).sum(dim=dim)
 
-def calculate_entropy_probs(probs: Tensor) -> Tensor:#, dim: int) -> Tensor:
+
+def calculate_entropy_probs(probs: Tensor) -> Tensor:  # , dim: int) -> Tensor:
     r"""
     Calculate the entropy from probabilities.
     """
     # return F.binary_cross_entropy(probs, probs, reduction='sum')#.sum(dim=dim)
     return (-probs * torch.log(probs.clamp(1e-8, 1))).sum()
+
 
 def calculate_batch_accuracy(output: Tensor, target: Tensor) -> float:
     r"""
