@@ -9,6 +9,7 @@ from joblib import dump, load
 
 class SVMSklearnModel(ModelBase, metaclass=abc.ABCMeta):
     def __init__(self, config):
+        self.config = config
         self.svm = self.initialize_svm(config)
         self.scaler = MinMaxScaler()
 
@@ -34,6 +35,8 @@ class SVMSklearnModel(ModelBase, metaclass=abc.ABCMeta):
         return data.obs["cell_labels"].cat.categories[prediction].to_numpy()
 
     def predict_proba(self, data: anndata.AnnData) -> np.ndarray:
+        if self.config["probability"] is False:
+            return None
         X = data.layers["exprs"]
         X_scaled = self.scaler.transform(X)
 
