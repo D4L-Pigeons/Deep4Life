@@ -58,6 +58,7 @@ def main():
     test_parser = subparsers.add_parser("test", help="Test a model.")
     test_parser.add_argument(
         "model-name",
+        dest="model_name",
         help="Name of the model to test (subdirectory of src/results containing the model and its config).",
     )
 
