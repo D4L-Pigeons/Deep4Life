@@ -7,14 +7,16 @@ from models.ModelBase import ModelBase
 
 
 class SklearnMLP(ModelBase):
-    def __init__(self, args):
+    def __init__(self, config):
+        self.config = config
         self.mlp_classifier = MLPClassifier(
             solver="adam",
             alpha=1e-5,
-            hidden_layer_sizes=(40 * 4, 40 * 4),
+            hidden_layer_sizes=(40 * 4, 40 * 4, 40 * 4),
             random_state=1,
             early_stopping=True,
             verbose=True,
+            max_iter=self.config.max_inter
         )
 
     def train(self, data: anndata.AnnData) -> None:
