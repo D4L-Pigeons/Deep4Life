@@ -24,13 +24,13 @@ from tqdm import tqdm
 from datasets.stellar_data import (StellarDataloader,
                                    make_graph_list_from_anndata)
 from models.ModelBase import ModelBase
+from utils import (MarginLoss, calculate_batch_accuracy,
+                   calculate_entropy_logits, calculate_entropy_probs)
 from datasets.stellar_data import StellarDataloader, make_graph_list_from_anndata
 from itertools import cycle
 import anndata
 import pandas as pd
 from typing import Union
-from utils import (MarginLoss, calculate_batch_accuracy,
-                   calculate_entropy_logits, calculate_entropy_probs)
 
 
 class VanillaStellarNormedLinear(nn.Module):
