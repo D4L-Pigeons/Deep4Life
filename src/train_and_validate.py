@@ -79,15 +79,15 @@ def main():
     current_time = datetime.datetime.now()
     formatted_time = current_time.strftime("%Y-%m-%d_%H-%M-%S")
 
-    results_path = (
-        RESULTS_PATH
-        / args.method
-        / f"{args.config}_{formatted_time}_seed_{args.cv_seed}_folds_{args.n_folds}"
-    )
-    if not os.path.exists(results_path):
-        os.mkdir(results_path)
-
     if not test_mode:
+        results_path = (
+            RESULTS_PATH
+            / args.method
+            / f"{args.config}_{formatted_time}_seed_{args.cv_seed}_folds_{args.n_folds}"
+        )
+        if not os.path.exists(results_path):
+            os.mkdir(results_path)
+
         cross_validation_metrics = cross_validation(
             data, model, random_state=args.cv_seed, n_folds=args.n_folds
         )
@@ -149,3 +149,6 @@ def create_model(args, config) -> ModelBase:
 
 if __name__ == "__main__":
     main()
+
+# cp first 10 from data/train/images_masks/img to data/test/images_masks/img
+# ! ls data/train/images_masks/img | head -10 | xargs -I {} cp data/train/images_masks/img/{} data/test/images_masks/img
