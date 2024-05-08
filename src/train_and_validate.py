@@ -218,14 +218,14 @@ def calculate_metrics(
         ground_truth, prediction, labels=classes, average="macro"
     )
     accuracy = sklearn.metrics.accuracy_score(ground_truth, prediction)
-    # average_precision_per_cell_type = macro_average_precision(
-    #     ground_truth, prediction_probability
-    # )
+    average_precision_per_cell_type = sklearn.metrics.average_precision_score(
+        ground_truth, prediction_probability, average=None
+    )
     roc_auc_per_cell_type = sklearn.metrics.roc_auc_score(
         ground_truth,
         prediction_probability,
         multi_class="ovr",
-        average='macro',
+        average=None,
         labels=classes,
     )
     confusion_matrix = sklearn.metrics.confusion_matrix(
@@ -236,7 +236,7 @@ def calculate_metrics(
         "f1_score_per_cell_type": f1_score_per_cell_type,
         "f1_score": f1_score,
         "accuracy": accuracy,
-        # "average_precision_per_cell_type": average_precision_per_cell_type,
+        "average_precision_per_cell_type": average_precision_per_cell_type,
         "roc_auc_per_cell_type": roc_auc_per_cell_type,
         "confusion_matrix": confusion_matrix,
     }
