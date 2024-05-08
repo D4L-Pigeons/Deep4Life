@@ -71,7 +71,7 @@ def main():
 
     results_path = RESULTS_PATH / args.method
     if not os.path.exists(results_path):
-        os.mkdir(results_path)
+        os.makedirs(results_path)
 
     results_path = (
         RESULTS_PATH
