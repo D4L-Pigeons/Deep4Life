@@ -4,22 +4,39 @@ All the results are in the [Presentation](https://docs.google.com/presentation/d
 
 ## Installation
 
-We recommend creating ```venv``` or ```coda``` environment with ```python>=3.9.
+We recommend creating ```venv``` or ```coda``` environment with ```python>=3.9```. 
+
+### Conda
+
+```bash
+conda create -n stellar python=3.9
+source activate stellar
+```
+
+And then:
+```bash
+pip3 install -r requirements.txt
+```
 
 ## Overview
 When you want to run any experiment, run:
-```cd src```
+```bash
+cd src
+```
 and then
-```python3 train_and_validate.py [ARGUMENTS]```
+```bash
+python3 train_and_validate.py [ARGUMENTS]
+```
 
 with possible options:
-  ```-h, --help```: show this help message and exit
-  ```--dataset-path``` (default="data/train"): dataset path
-  ```--method``` {stellar,torch_mlp,sklearn_mlp,xgboost} (default="stellar"): 
-  ```--config``` (default="standard"): Name of a configuration in src/config/{method} directory.
-  ```--cv-seed``` (default=42): Seed used to make k folds for cross validation.
-  ```--n-folds``` (default=5): Number of folds in cross validation.
-  ```--retrain``` (default=True): Retrain a model using the whole dataset.
+  * ```-h, --help```: show this help message and exit
+  * ```--dataset-path``` (default="data/train"): dataset path
+  * ```--method``` {stellar,torch_mlp,sklearn_mlp,xgboost} (default="stellar"): 
+  * ```--config``` (default="standard"): Name of a configuration in src/config/{method} directory.
+  * ```--cv-seed``` (default=42): Seed used to make k folds for cross validation.
+  * ```--n-folds``` (default=5): Number of folds in cross validation.
+  * ```--retrain``` (default=True): Retrain a model using the whole dataset.
+  
 
 
 We recommend using ```--config``` flag. Sample configs are given in ```src/config/{method}``` folders.
@@ -41,7 +58,13 @@ We have 3 (4) baselines in total:
 
 ### XGBoost
 
+Model is available in ```src/models/xgboost.py```. 
+Experiments were ran using configs from ```src/config/xgboost/standard.yaml``` and notebook ```notebook/xgboost_tryout.ipynb```.
+
 ### MLP
+
+There are two available models: one using **sklearn**, and one using **torch**. Models are implemented in ```src/models/{torch, sklearn}_mlp.py```.
+Experiments were ran using configs from ```src/config/{torch, sklearn}_mlp/standard.yaml``` and notebooks ```notebook/MLP_tryout.ipynb```.
 
 ### CellSighter
 
