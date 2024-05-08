@@ -2,13 +2,13 @@ import pandas as pd
 import anndata
 import torch
 from sklearn.model_selection import KFold
-from metrics import calculate_metrics
+from eval.metrics import calculate_metrics
 from models.ModelBase import ModelBase
+
 
 def cross_validation(
     data: anndata.AnnData, model: ModelBase, random_state: int = 42, n_folds: int = 5
 ) -> pd.DataFrame:
-    torch.manual_seed(42)
 
     metrics_names = [
         "f1_score_per_cell_type",

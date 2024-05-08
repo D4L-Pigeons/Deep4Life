@@ -21,15 +21,17 @@ from models.torch_mlp import TorchMLP
 from models.sklearn_svm import SVMSklearnSVC
 from models.vanilla_stellar import VanillaStellarReduced
 from models.xgboost import XGBoostModel
-from utils import cross_validation
+from eval.utils import cross_validation
 
 CONFIG_PATH: Path = Path(__file__).parent / "config"
 RESULTS_PATH: Path = Path(__file__).parent.parent / "results"
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Validate model")
-    parser.add_argument("--dataset-path", default="data/train", help="dataset path")
+    np.random.seed(42)
+    torch.manual_seed(42)
+
+    parser = argparse.ArgumentParser(description="Script to train or test a model.")
     parser.add_argument(
         "--method",
         default="stellar",
@@ -40,31 +42,29 @@ def main():
         default="standard",
         help="Name of a configuration in src/config/{method} directory.",
     )
-    parser.add_argument(
+
+    subparsers = parser.add_subparsers(help="Train or test a model.")
+    train_parser = subparsers.add_parser("train", help="Train a model.")
+    train_parser.add_argument(
         "--cv-seed", default=42, help="Seed used to make k folds for cross validation."
     )
-    parser.add_argument(
+    train_parser.add_argument(
         "--n-folds", default=5, help="Number of folds in cross validation."
     )
-    parser.add_argument("--test", action="store_true", help="Test mode.")
-    parser.add_argument(
+    train_parser.add_argument(
         "--retrain", default=True, help="Retrain a model using the whole dataset."
     )
 
-    args = parser.parse_args()
-
-    config = load_config(args)
-    model = create_model(args, config)
-
-    data = load_full_anndata(test=args.test)
-
-    cross_validation_metrics = cross_validation(
-        data, model, random_state=args.cv_seed, n_folds=args.n_folds
+    test_parser = subparsers.add_parser("test", help="Test a model.")
+    test_parser.add_argument(
+        "model-name",
+        help="Name of the model to test (subdirectory of src/results containing the model and its config).",
     )
 
-    # Save results
-    current_time = datetime.datetime.now()
-    formatted_time = current_time.strftime("%Y-%m-%d_%H-%M-%S")
+    args = parser.parse_args()
+    config = load_config(args)
+    model = create_model(args, config)
+    data = load_full_anndata(test=args.test)
 
     # Create directories if they don't exist
     if not os.path.exists(RESULTS_PATH):
@@ -82,21 +82,43 @@ def main():
     if not os.path.exists(results_path):
         os.mkdir(results_path)
 
-    # Save config
-    with open(results_path / "config.yaml", "w") as file:
-        yaml.dump(config.__dict__, file)
-        print(f"Config saved to: {results_path / 'config.yaml'}")
+    if args.train:
+        cross_validation_metrics = cross_validation(
+            data, model, random_state=args.cv_seed, n_folds=args.n_folds
+        )
+        # Save results
+        current_time = datetime.datetime.now()
+        formatted_time = current_time.strftime("%Y-%m-%d_%H-%M-%S")
 
-    # Save metrics
-    cross_validation_metrics.to_json(results_path / "metrics.json", indent=4)
-    print(f"Metrics saved to: {results_path / 'metrics.json'}")
+        # Save config
+        with open(results_path / "config.yaml", "w") as file:
+            yaml.dump(config.__dict__, file)
+            print(f"Config saved to: {results_path / 'config.yaml'}")
 
-    # Retrain and save model
-    if args.retrain:
-        print("Retraining model...")
-        model.train(data)
-        saved_model_path = model.save(str(results_path / "saved_model"))
-        print(f"Model saved to: {saved_model_path}")
+        # Save metrics
+        cross_validation_metrics.to_json(results_path / "metrics.json", indent=4)
+        print(f"Metrics saved to: {results_path / 'metrics.json'}")
+
+        # Retrain and save model
+        if args.retrain:
+            print("Retraining model...")
+            model.train(data)
+            saved_model_path = model.save(str(results_path / "saved_model"))
+            print(f"Model saved to: {saved_model_path}")
+
+    elif args.test:
+        model_path = RESULTS_PATH / args.method / args.model_name / "saved_model"
+        model.load(model_path)
+        prediction = model.predict(data)
+        prediction_probability = model.predict_proba(data)
+
+        # Save results
+        current_time = datetime.datetime.now()
+        formatted_time = current_time.strftime("%Y-%m-%d_%H-%M-%S")
+
+        # Save prediction and prediction probability
+        np.save(results_path / "prediction.npy", prediction)
+        np.save(results_path / "prediction_probability.npy", prediction_probability)
 
 
 def load_config(args) -> argparse.Namespace:
