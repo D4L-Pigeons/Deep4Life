@@ -43,7 +43,7 @@ def main():
         help="Name of a configuration in src/config/{method} directory.",
     )
 
-    subparsers = parser.add_subparsers(help="Train or test a model.")
+    subparsers = parser.add_subparsers(help="Train or test a model.", dest="mode")
     train_parser = subparsers.add_parser("train", help="Train a model.")
     train_parser.add_argument(
         "--cv-seed", default=42, help="Seed used to make k folds for cross validation."
@@ -64,7 +64,8 @@ def main():
     args = parser.parse_args()
     config = load_config(args)
     model = create_model(args, config)
-    data = load_full_anndata(test=args.test)
+    test_mode = args.mode == "test"
+    data = load_full_anndata(test=test_mode)
 
     # Create directories if they don't exist
     if not os.path.exists(RESULTS_PATH):
@@ -74,6 +75,10 @@ def main():
     if not os.path.exists(results_path):
         os.makedirs(results_path)
 
+    # Save results
+    current_time = datetime.datetime.now()
+    formatted_time = current_time.strftime("%Y-%m-%d_%H-%M-%S")
+
     results_path = (
         RESULTS_PATH
         / args.method
@@ -82,7 +87,7 @@ def main():
     if not os.path.exists(results_path):
         os.mkdir(results_path)
 
-    if args.train:
+    if not test_mode:
         cross_validation_metrics = cross_validation(
             data, model, random_state=args.cv_seed, n_folds=args.n_folds
         )
@@ -106,15 +111,11 @@ def main():
             saved_model_path = model.save(str(results_path / "saved_model"))
             print(f"Model saved to: {saved_model_path}")
 
-    elif args.test:
+    else:
         model_path = RESULTS_PATH / args.method / args.model_name / "saved_model"
         model.load(model_path)
         prediction = model.predict(data)
         prediction_probability = model.predict_proba(data)
-
-        # Save results
-        current_time = datetime.datetime.now()
-        formatted_time = current_time.strftime("%Y-%m-%d_%H-%M-%S")
 
         # Save prediction and prediction probability
         np.save(results_path / "prediction.npy", prediction)
