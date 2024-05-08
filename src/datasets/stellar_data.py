@@ -59,17 +59,11 @@ def make_graph_list_from_anndata(
     graphs: List[Data] = []
     for sample_id in anndata.obs["sample_id"].unique():
         sample_cell_indices = (anndata.obs["sample_id"] == sample_id).values
-<<<<<<< HEAD
-        sample_cell_ids = np.array(anndata.obs[sample_cell_indices].index).reshape(-1)
-        
-        sample_pos = anndata.obs[sample_cell_indices][["Pos_X", "Pos_Y"]].values.astype(np.float32)
-=======
         sample_cell_ids = np.array(anndata.obs[sample_cell_indices].index)
 
         sample_pos = anndata.obs[sample_cell_indices][["Pos_X", "Pos_Y"]].values.astype(
             np.float32
         )
->>>>>>> master
         sample_edges = _get_edges(sample_pos, distance_threshold)
 
         sample_targets = targets[sample_cell_indices].astype(np.int32)

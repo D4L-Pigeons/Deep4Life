@@ -27,12 +27,7 @@ TEST_IMAGE_DATA_IMAGES: Path = TEST_IMAGE_DATA_DIR / TEST_ORIGINAL_IMAGES_SUBDIR
 TEST_IMAGE_DATA_MASKS: Path = TEST_IMAGE_DATA_DIR / TEST_ORIGINAL_MASKS_SUBDIR
 
 
-<<<<<<< HEAD
-
-def load_full_anndata(test: bool = False) -> anndata.AnnData:
-=======
 def load_full_anndata(test: bool) -> anndata.AnnData:
->>>>>>> master
     r"""
     Load the full anndata object from the Deep4Life dataset.
 
