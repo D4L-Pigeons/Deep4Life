@@ -28,6 +28,7 @@ class XGBoostModel(ModelBase):
 
     def predict(self, data: anndata.AnnData) -> np.ndarray:
         X = data.layers["exprs"]
+        self.scaler.fit(X)
         X_scaled = self.scaler.transform(X)
 
         prediction = self.xgboost.predict(X_scaled)

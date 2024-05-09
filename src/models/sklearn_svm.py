@@ -28,6 +28,7 @@ class SVMSklearnModel(ModelBase, metaclass=abc.ABCMeta):
 
     def predict(self, data: anndata.AnnData) -> np.ndarray:
         X = data.layers["exprs"]
+        self.scaler.fit(X)
         X_scaled = self.scaler.transform(X)
 
         prediction = self.svm.predict(X_scaled)
