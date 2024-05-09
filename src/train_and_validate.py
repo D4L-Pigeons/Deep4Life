@@ -21,14 +21,17 @@ from models.torch_mlp import TorchMLP
 from models.sklearn_svm import SVMSklearnSVC
 from models.vanilla_stellar import VanillaStellarReduced
 from models.xgboost import XGBoostModel
+from eval.utils import cross_validation
 
 CONFIG_PATH: Path = Path(__file__).parent / "config"
 RESULTS_PATH: Path = Path(__file__).parent.parent / "results"
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Validate model")
-    parser.add_argument("--dataset-path", default="data/train", help="dataset path")
+    np.random.seed(42)
+    torch.manual_seed(42)
+
+    parser = argparse.ArgumentParser(description="Script to train or test a model.")
     parser.add_argument(
         "--method",
         default="stellar",
@@ -39,63 +42,92 @@ def main():
         default="standard",
         help="Name of a configuration in src/config/{method} directory.",
     )
-    parser.add_argument(
+
+    subparsers = parser.add_subparsers(help="Train or test a model.", dest="mode")
+    train_parser = subparsers.add_parser("train", help="Train a model.")
+    train_parser.add_argument(
         "--cv-seed", default=42, help="Seed used to make k folds for cross validation."
     )
-    parser.add_argument(
+    train_parser.add_argument(
         "--n-folds", default=5, help="Number of folds in cross validation."
     )
-    parser.add_argument("--test", action="store_true", help="Test mode.")
-    parser.add_argument(
-        "--retrain", default=True, help="Retrain a model using the whole dataset."
+    train_parser.add_argument("--do-cv", default=True, help="Perform cross validation.")
+    train_parser.add_argument(
+        "--retrain",
+        default=True,
+        help="Only if do-cv is set, retrain a model using the whole dataset.",
+    )
+
+    test_parser = subparsers.add_parser("test", help="Test a model.")
+    test_parser.add_argument(
+        "model_name",
+        help="Name of the model to test (subdirectory of src/results containing the model and its config).",
     )
 
     args = parser.parse_args()
-
     config = load_config(args)
     model = create_model(args, config)
-
-    data = load_full_anndata(test=args.test)
-
-    cross_validation_metrics = cross_validation(
-        data, model, random_state=args.cv_seed, n_folds=args.n_folds
-    )
-
-    # Save results
-    current_time = datetime.datetime.now()
-    formatted_time = current_time.strftime("%Y-%m-%d_%H-%M-%S")
+    test_mode = args.mode == "test"
+    data = load_full_anndata(test=test_mode)
 
     # Create directories if they don't exist
     if not os.path.exists(RESULTS_PATH):
         os.mkdir(RESULTS_PATH)
 
-    results_path = RESULTS_PATH / args.method
-    if not os.path.exists(results_path):
-        os.makedirs(results_path)
+    if not test_mode:
+        train_model(args, model, data, config)
+    else:
+        test_model(args, model, data)
+
+
+def train_model(args, model, data, config):
+    # Save results
+    current_time = datetime.datetime.now()
+    formatted_time = current_time.strftime("%Y-%m-%d_%H-%M-%S")
 
     results_path = (
         RESULTS_PATH
         / args.method
         / f"{args.config}_{formatted_time}_seed_{args.cv_seed}_folds_{args.n_folds}"
     )
-    if not os.path.exists(results_path):
-        os.mkdir(results_path)
+    os.makedirs(results_path)
+
+    # Save results
+    current_time = datetime.datetime.now()
+    formatted_time = current_time.strftime("%Y-%m-%d_%H-%M-%S")
 
     # Save config
     with open(results_path / "config.yaml", "w") as file:
         yaml.dump(config.__dict__, file)
         print(f"Config saved to: {results_path / 'config.yaml'}")
 
-    # Save metrics
-    cross_validation_metrics.to_json(results_path / "metrics.json", indent=4)
-    print(f"Metrics saved to: {results_path / 'metrics.json'}")
+    if args.do_cv:
+        cross_validation_metrics = cross_validation(
+            data, model, random_state=args.cv_seed, n_folds=args.n_folds
+        )
+
+        # Save metrics
+        cross_validation_metrics.to_json(results_path / "metrics.json", indent=4)
+        print(f"Metrics saved to: {results_path / 'metrics.json'}")
 
     # Retrain and save model
-    if args.retrain:
+    if not args.do_cv or args.retrain:
         print("Retraining model...")
         model.train(data)
         saved_model_path = model.save(str(results_path / "saved_model"))
         print(f"Model saved to: {saved_model_path}")
+
+
+def test_model(args, model, data):
+    results_path = RESULTS_PATH / args.method / args.model_name
+    model_path = results_path / "saved_model"
+    model.load(str(model_path))
+    prediction = model.predict(data)
+    prediction_probability = model.predict_proba(data)
+
+    # Save prediction and prediction probability
+    np.save(results_path / "prediction.npy", prediction)
+    np.save(results_path / "prediction_probability.npy", prediction_probability)
 
 
 def load_config(args) -> argparse.Namespace:
@@ -121,134 +153,6 @@ def create_model(args, config) -> ModelBase:
         return SVMSklearnSVC(vars(config))
     else:
         raise NotImplementedError(f"{args.method} method not implemented.")
-
-
-def cross_validation(
-    data: anndata.AnnData, model: ModelBase, random_state: int = 42, n_folds: int = 5
-) -> pd.DataFrame:
-    torch.manual_seed(42)
-
-    metrics_names = [
-        "f1_score_per_cell_type",
-        "f1_score",
-        "accuracy",
-        "average_precision_per_cell_type",
-        "roc_auc_per_cell_type",
-        "confusion_matrix",
-    ]
-
-    cross_validation_metrics = pd.DataFrame(columns=metrics_names)
-
-    for i, (train_data, test_data) in enumerate(k_folds(data, n_folds, random_state)):
-        model.train(train_data)
-        prediction = model.predict(test_data)
-        prediction_probability = model.predict_proba(test_data)
-        ground_truth = test_data.obs["cell_labels"]
-
-        calculate_metrics(
-            ground_truth,
-            prediction,
-            prediction_probability,
-            test_data.obs["cell_labels"].cat.categories,
-            cross_validation_metrics,
-        )
-
-        print(
-            f"Validation accuracy of {i} fold:",
-            cross_validation_metrics.loc[i]["accuracy"],
-        )
-
-    average_metrics = {
-        metric_name: cross_validation_metrics[metric_name].mean()
-        for metric_name in metrics_names
-    }
-    cross_validation_metrics.loc[len(cross_validation_metrics.index)] = average_metrics
-
-    return cross_validation_metrics
-
-
-def k_folds(data: anndata.AnnData, n_folds: int, random_state: int):
-    sample_ids = data.obs["sample_id"].cat.remove_unused_categories()
-    sample_ids_unique = sample_ids.cat.categories
-
-    kfold = KFold(n_splits=n_folds, shuffle=True, random_state=random_state)
-    split = kfold.split(sample_ids_unique.tolist())
-
-    for train, test in split:
-        train_mask = data.obs["sample_id"].isin(sample_ids_unique[train])
-        test_mask = data.obs["sample_id"].isin(sample_ids_unique[test])
-
-        yield data[train_mask], data[test_mask]
-
-
-# def macro_average_precision(ground_truth, prediction_probability):
-#   """
-#   Calculates macro-averaged precision for multi-class classification.
-
-#   Args:
-#       ground_truth (array-like): Array of true labels.
-#       prediction_probability (array-like): Array of predicted class probabilities.
-
-#   Returns:
-#       float: Macro-averaged precision score.
-#   """
-#   num_classes = len(ground_truth.unique())
-
-#   precision_per_class = []
-
-#   # Calculate precision score for each class
-#   for class_label in range(num_classes):
-#     class_mask = ground_truth == class_label
-#     ground_truth_filtered = ground_truth[class_mask]
-#     prediction_probability_filtered = prediction_probability[class_mask]
-#     # Calculate precision for this class
-#     precision = sklearn.metrics.precision_score(ground_truth_filtered, prediction_probability_filtered[:, class_label], average='binary', zero_division=0)
-#     precision_per_class.append(precision)
-
-#   # Macro-average the precision scores
-#   macro_average_precision = np.mean(precision_per_class)
-#   return macro_average_precision
-
-
-
-def calculate_metrics(
-    ground_truth, prediction, prediction_probability, classes, cross_validation_metrics
-):
-    f1_score_per_cell_type = sklearn.metrics.f1_score(
-        ground_truth, prediction, labels=classes, average=None
-    )
-    f1_score = sklearn.metrics.f1_score(
-        ground_truth, prediction, labels=classes, average="macro"
-    )
-    accuracy = sklearn.metrics.accuracy_score(ground_truth, prediction)
-    if prediction_probability is not None:
-        average_precision_per_cell_type = sklearn.metrics.average_precision_score(
-            ground_truth, prediction_probability, average=None
-        )
-        roc_auc_per_cell_type = sklearn.metrics.roc_auc_score(
-            ground_truth,
-            prediction_probability,
-            multi_class="ovr",
-            average=None,
-            labels=classes,
-        )
-    else:
-        average_precision_per_cell_type = None
-        roc_auc_per_cell_type = None
-    confusion_matrix = sklearn.metrics.confusion_matrix(
-        ground_truth, prediction, labels=classes
-    )
-
-    metrics = {
-        "f1_score_per_cell_type": f1_score_per_cell_type,
-        "f1_score": f1_score,
-        "accuracy": accuracy,
-        "average_precision_per_cell_type": average_precision_per_cell_type,
-        "roc_auc_per_cell_type": roc_auc_per_cell_type,
-        "confusion_matrix": confusion_matrix,
-    }
-
-    cross_validation_metrics.loc[len(cross_validation_metrics.index)] = metrics
 
 
 if __name__ == "__main__":

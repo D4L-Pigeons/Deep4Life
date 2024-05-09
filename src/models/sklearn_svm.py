@@ -28,6 +28,7 @@ class SVMSklearnModel(ModelBase, metaclass=abc.ABCMeta):
 
     def predict(self, data: anndata.AnnData) -> np.ndarray:
         X = data.layers["exprs"]
+        self.scaler.fit(X)
         X_scaled = self.scaler.transform(X)
 
         prediction = self.svm.predict(X_scaled)
@@ -49,7 +50,7 @@ class SVMSklearnModel(ModelBase, metaclass=abc.ABCMeta):
         return path_with_ext
 
     def load(self, file_path: str) -> None:
-        self.svm = load(file_path)
+        self.svm = load(file_path + ".joblib")
 
 
 class SVMSklearnSVC(SVMSklearnModel):

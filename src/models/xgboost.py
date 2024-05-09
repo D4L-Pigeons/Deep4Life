@@ -28,6 +28,7 @@ class XGBoostModel(ModelBase):
 
     def predict(self, data: anndata.AnnData) -> np.ndarray:
         X = data.layers["exprs"]
+        self.scaler.fit(X)
         X_scaled = self.scaler.transform(X)
 
         prediction = self.xgboost.predict(X_scaled)
@@ -48,4 +49,4 @@ class XGBoostModel(ModelBase):
         return path_with_ext
 
     def load(self, file_path: str) -> None:
-        self.xgboost.load_model(file_path)
+        self.xgboost.load_model(file_path + ".json")
