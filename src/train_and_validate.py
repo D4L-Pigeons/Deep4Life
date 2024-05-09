@@ -113,7 +113,7 @@ def main():
 
     else:
         model_path = RESULTS_PATH / args.method / args.model_name / "saved_model"
-        model.load(model_path)
+        model.load(str(model_path))
         prediction = model.predict(data)
         prediction_probability = model.predict_proba(data)
 
