@@ -51,8 +51,11 @@ def main():
     train_parser.add_argument(
         "--n-folds", default=5, help="Number of folds in cross validation."
     )
+    train_parser.add_argument("--do-cv", default=True, help="Perform cross validation.")
     train_parser.add_argument(
-        "--retrain", default=True, help="Retrain a model using the whole dataset."
+        "--retrain",
+        default=True,
+        help="Only if do-cv is set, retrain a model using the whole dataset.",
     )
 
     test_parser = subparsers.add_parser("test", help="Test a model.")
@@ -89,9 +92,6 @@ def train_model(args, model, data, config):
     )
     os.makedirs(results_path)
 
-    cross_validation_metrics = cross_validation(
-        data, model, random_state=args.cv_seed, n_folds=args.n_folds
-    )
     # Save results
     current_time = datetime.datetime.now()
     formatted_time = current_time.strftime("%Y-%m-%d_%H-%M-%S")
@@ -101,12 +101,17 @@ def train_model(args, model, data, config):
         yaml.dump(config.__dict__, file)
         print(f"Config saved to: {results_path / 'config.yaml'}")
 
-    # Save metrics
-    cross_validation_metrics.to_json(results_path / "metrics.json", indent=4)
-    print(f"Metrics saved to: {results_path / 'metrics.json'}")
+    if args.do_cv:
+        cross_validation_metrics = cross_validation(
+            data, model, random_state=args.cv_seed, n_folds=args.n_folds
+        )
+
+        # Save metrics
+        cross_validation_metrics.to_json(results_path / "metrics.json", indent=4)
+        print(f"Metrics saved to: {results_path / 'metrics.json'}")
 
     # Retrain and save model
-    if args.retrain:
+    if not args.do_cv or args.retrain:
         print("Retraining model...")
         model.train(data)
         saved_model_path = model.save(str(results_path / "saved_model"))
