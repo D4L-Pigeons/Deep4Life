@@ -4,7 +4,7 @@ All the results are in the [Presentation](https://docs.google.com/presentation/d
 
 ## Installation
 
-We recommend creating ```venv``` or ```coda``` environment with ```python>=3.9```. 
+We recommend creating ```venv``` or ```conda``` environment with ```python>=3.9```. 
 
 ### Conda
 
