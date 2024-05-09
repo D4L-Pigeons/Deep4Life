@@ -1,12 +1,15 @@
 # Deep4Life project: [Pigeons](https://www.bbc.com/news/science-environment-34878151) team
 
-All the results are in the [Presentation](https://docs.google.com/presentation/d/1VP0hD3Spl1-d2TDUZf92NAkSbDK-Y4ACYHqFUOCzhMk/edit?usp=sharing).
+All the results visualisation are in the [Presentation](https://docs.google.com/presentation/d/1VP0hD3Spl1-d2TDUZf92NAkSbDK-Y4ACYHqFUOCzhMk/edit?usp=sharing).
+
+Trained models with results are in [Best results](https://drive.google.com/drive/folders/1KqW5OF19GBeYsR6_f97JDuT_QjC0lKVS?usp=drive_link).
 
 ## Installation
 
 We recommend creating ```venv``` or ```conda``` environment with ```python>=3.9```. 
+You can use ```environment.yaml```.
 
-### Conda
+### Conda and requirements.txt
 
 ```bash
 conda create -n stellar python=3.9
@@ -37,7 +40,6 @@ with possible options:
   * ```--n-folds``` (default=5): Number of folds in cross validation.
   * ```--retrain``` (default=True): Retrain a model using the whole dataset.
   
-
 
 We recommend using ```--config``` flag. Sample configs are given in ```src/config/{method}``` folders.
 
