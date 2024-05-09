@@ -3,3 +3,5 @@ data
 __pycache__/
 .vscode
 results
+final_results
+best_results
