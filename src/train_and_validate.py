@@ -71,55 +71,58 @@ def main():
     if not os.path.exists(RESULTS_PATH):
         os.mkdir(RESULTS_PATH)
 
-    results_path = RESULTS_PATH / args.method
-    if not os.path.exists(results_path):
-        os.makedirs(results_path)
+    if not test_mode:
+        train_model(args, model, data, config)
+    else:
+        test_model(args, model, data)
 
+
+def train_model(args, model, data, config):
     # Save results
     current_time = datetime.datetime.now()
     formatted_time = current_time.strftime("%Y-%m-%d_%H-%M-%S")
 
-    if not test_mode:
-        results_path = (
-            RESULTS_PATH
-            / args.method
-            / f"{args.config}_{formatted_time}_seed_{args.cv_seed}_folds_{args.n_folds}"
-        )
-        if not os.path.exists(results_path):
-            os.mkdir(results_path)
+    results_path = (
+        RESULTS_PATH
+        / args.method
+        / f"{args.config}_{formatted_time}_seed_{args.cv_seed}_folds_{args.n_folds}"
+    )
+    os.makedirs(results_path)
 
-        cross_validation_metrics = cross_validation(
-            data, model, random_state=args.cv_seed, n_folds=args.n_folds
-        )
-        # Save results
-        current_time = datetime.datetime.now()
-        formatted_time = current_time.strftime("%Y-%m-%d_%H-%M-%S")
+    cross_validation_metrics = cross_validation(
+        data, model, random_state=args.cv_seed, n_folds=args.n_folds
+    )
+    # Save results
+    current_time = datetime.datetime.now()
+    formatted_time = current_time.strftime("%Y-%m-%d_%H-%M-%S")
 
-        # Save config
-        with open(results_path / "config.yaml", "w") as file:
-            yaml.dump(config.__dict__, file)
-            print(f"Config saved to: {results_path / 'config.yaml'}")
+    # Save config
+    with open(results_path / "config.yaml", "w") as file:
+        yaml.dump(config.__dict__, file)
+        print(f"Config saved to: {results_path / 'config.yaml'}")
 
-        # Save metrics
-        cross_validation_metrics.to_json(results_path / "metrics.json", indent=4)
-        print(f"Metrics saved to: {results_path / 'metrics.json'}")
+    # Save metrics
+    cross_validation_metrics.to_json(results_path / "metrics.json", indent=4)
+    print(f"Metrics saved to: {results_path / 'metrics.json'}")
 
-        # Retrain and save model
-        if args.retrain:
-            print("Retraining model...")
-            model.train(data)
-            saved_model_path = model.save(str(results_path / "saved_model"))
-            print(f"Model saved to: {saved_model_path}")
+    # Retrain and save model
+    if args.retrain:
+        print("Retraining model...")
+        model.train(data)
+        saved_model_path = model.save(str(results_path / "saved_model"))
+        print(f"Model saved to: {saved_model_path}")
 
-    else:
-        model_path = RESULTS_PATH / args.method / args.model_name / "saved_model"
-        model.load(str(model_path))
-        prediction = model.predict(data)
-        prediction_probability = model.predict_proba(data)
 
-        # Save prediction and prediction probability
-        np.save(results_path / "prediction.npy", prediction)
-        np.save(results_path / "prediction_probability.npy", prediction_probability)
+def test_model(args, model, data):
+    results_path = RESULTS_PATH / args.method / args.model_name
+    model_path = results_path / "saved_model"
+    model.load(str(model_path))
+    prediction = model.predict(data)
+    prediction_probability = model.predict_proba(data)
+
+    # Save prediction and prediction probability
+    np.save(results_path / "prediction.npy", prediction)
+    np.save(results_path / "prediction_probability.npy", prediction_probability)
 
 
 def load_config(args) -> argparse.Namespace:
@@ -149,6 +152,3 @@ def create_model(args, config) -> ModelBase:
 
 if __name__ == "__main__":
     main()
-
-# cp first 10 from data/train/images_masks/img to data/test/images_masks/img
-# ! ls data/train/images_masks/img | head -10 | xargs -I {} cp data/train/images_masks/img/{} data/test/images_masks/img
